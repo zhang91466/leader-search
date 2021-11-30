@@ -46,7 +46,7 @@ def getLevelName(level):
             "Level %s" % level)
 
 
-class DwLogger:
+class Logger:
     """
         项目日志输出工具类
     """

@@ -20,9 +20,10 @@ class LSearch(Flask):
 
 
 def create_app():
-    from .models.base import db, search
-    from .handlers.api import api
+    from .models.base import db, search, meta_info
+    from .interface import api
     from . import migrate
+
 
     app = LSearch()
 
@@ -30,5 +31,6 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
     api.init_app(app)
+    meta_info.init_app(app)
 
     return app

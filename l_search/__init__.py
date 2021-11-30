@@ -7,7 +7,7 @@
 from .app import create_app
 from flask_migrate import Migrate
 
-__name__ = "Leadmap full text search"
+__title__ = "Leadmap full text search"
 __version__ = "0.0.1"
 
 migrate = Migrate()
