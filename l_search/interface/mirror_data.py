@@ -54,9 +54,10 @@ class MirrorData(Resource):
         Meta.domain = request_data["domain"]
         Meta.db_object_type = request_data["db_object_type"]
         Meta.db_name = request_data["db_name"]
-        Meta.extract_data(table_name=request_data["table_name"],
-                          block_name=request_data["block_name"],
-                          block_key=request_data["block_key"],
-                          primary_column_name=request_data["primary_column_name"],
-                          extract_column_name=request_data["extract_column_name"]
-                          )
+        extract_result = Meta.extract_data(table_name=request_data["table_name"],
+                                           block_name=request_data["block_name"],
+                                           block_key=request_data["block_key"],
+                                           primary_column_name=request_data["primary_column_name"],
+                                           extract_column_name=request_data["extract_column_name"]
+                                           )
+        return {"is-ok": extract_result}, 200

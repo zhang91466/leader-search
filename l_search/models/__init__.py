@@ -42,7 +42,7 @@ class FullTextIndex(db.Model, InsertObject):
     __tablename__ = "full_text_index"
     __searchable__ = ["row_content"]
 
-    id = Column(db.String(50), primary_key=True)
+    id = Column(db.String(300), primary_key=True)
     domain = Column(db.String(150))
     db_object_type = Column(db.String(150))
     block_name = Column(db.String(500))

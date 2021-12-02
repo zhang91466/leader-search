@@ -43,5 +43,8 @@ class InsertObject:
                 db.session.execute(cls.__table__.insert(), input_data)
                 db.session.commit()
                 logger.info("Table %s insert count %d" % (cls.__table__, len(input_data)))
+                return True
         except Exception as e:
             logger.error("Bulk insert error: %s" % e)
+
+        return False

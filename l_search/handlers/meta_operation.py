@@ -10,6 +10,7 @@ from DWMM import set_connect
 from DWMM.operate.connect_info import ConnectionOperate
 from DWMM.operate.metadata_info import MetadataOperate
 from DWMM.source_meta_operate.handle.meta_handle import MetaDetector
+import hashlib
 
 logger = Logger()
 
@@ -52,23 +53,32 @@ class Meta:
                                               table_name=table_name,
                                               is_extract=None
                                               )
+        select_case_str = ""
         concat_str = ""
         for col in table_schema:
-            concat_str.join("%s, " % col["column_name"])
 
             if col["is_primary"] == 1:
                 primary_column_name = col["column_name"]
+                continue
 
             if col["is_extract_filter"] == 1:
                 extract_column_name = col["column_name"]
 
-            concat_str = concat_str[:-1]
+            if col["column_type"].lower() in ["varchar", "string", "text", "char"]:
+                select_case_str = select_case_str + """
+                ,case when %(column_name)s is null then '' else %(column_name)s end as %(column_name)s """ % {
+                    "column_name": col["column_name"]}
 
-        if primary_column_name and extract_column_name:
+                concat_str = concat_str + "%s, '*', " % col["column_name"]
+
+        concat_str = concat_str.strip()[:-1]
+
+        if primary_column_name and extract_column_name and len(concat_str) > 1:
             logger.debug("(%s.%s.%s) 表主键和抽取列都明确，生成抽取sql" % (cls.domain, cls.db_name, table_name))
 
             sql_select = """
             select 
+            concat('%(id_tag)s','-',%(table_primary_id)s) as id,
             '%(domain)s' as domain
             ,'%(db_object_type)s' as db_object_type
             ,'%(db_name)s' as db_name
@@ -78,6 +88,9 @@ class Meta:
             ,concat(%(row_content)s) as row_content
             
             """ % {
+                "id_tag": hashlib.md5(
+                    str("%s-%s-%s-%s" % (cls.domain, cls.db_object_type, cls.db_name, table_name)).encode(
+                        "utf-8")).hexdigest(),
                 "domain": cls.domain,
                 "db_object_type": cls.db_object_type,
                 "db_name": cls.db_name,
@@ -88,9 +101,15 @@ class Meta:
             }
 
             sql_from = """
-            from %(table_name)s
-            
-            """
+            from (
+                select
+                %(table_primary_id)s
+                %(case_col)s
+                from %(table_name)s
+            ) t1
+            """ % {"table_primary_id": primary_column_name,
+                   "case_col": select_case_str,
+                   "table_name": table_name}
 
             return {"select": sql_select,
                     "from": sql_from}
@@ -131,4 +150,4 @@ class Meta:
 
             execute_data = meta_detector.execute_select_sql(sql_text=sql_text)
 
-            models.FullTextIndex.bulk_insert(input_data=execute_data)
+            return models.FullTextIndex.bulk_insert(input_data=execute_data)
