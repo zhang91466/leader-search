@@ -23,8 +23,8 @@ class Meta:
     def init_app(self, app):
         """
         元数据管理系统的对应数据库必须是mysql
-        :param app:
-        :return:
+        :param app: flask app
+        :return: None
         """
         app.config.setdefault("SOURCE_DB_HOST", None)
         app.config.setdefault("SOURCE_DB_PORT", None)
@@ -39,14 +39,45 @@ class Meta:
                     pwd=app.config["SOURCE_DB_PWD"])
 
     @classmethod
+    def add_connection_info(cls,
+                            domain,
+                            db_object_type,
+                            host,
+                            port,
+                            account,
+                            pwd,
+                            default_db):
+        return ConnectionOperate.add_row({"domain": domain,
+                                          "type": models.DBObjectType[db_object_type].value,
+                                          "host": host,
+                                          "port": port,
+                                          "account": account,
+                                          "pwd": pwd,
+                                          "default_db": default_db})
+
+    @classmethod
     def get_connection_info(cls, domain, db_object_type):
         return ConnectionOperate.get_info(subject_domain=domain, object_type=db_object_type)
 
     @classmethod
-    def create_extract_table_sql(cls,
-                                 table_name,
-                                 primary_column_name=None,
-                                 extract_column_name=None):
+    def sync_table_schema(cls, table_list=None, table_name_prefix=None):
+        meta_detector = MetaDetector(subject_domain=cls.domain,
+                                     object_type=models.DBObjectType[cls.db_object_type].value)
+        detector_schema_info = meta_detector.detector_schema(tables=table_list, table_name_prefix=table_name_prefix)
+        return detector_schema_info
+
+    @classmethod
+    def create_extract_table_sql_to_full_index(cls,
+                                               table_name,
+                                               primary_column_name=None,
+                                               extract_column_name=None):
+        """
+        为了将数据导入全局检索表中，根据元数据管理系统中已经记录的表结构，组织数据抽取sql
+        :param table_name: 抽取表表名
+        :param primary_column_name: 抽取表主键
+        :param extract_column_name: 抽取表中的时间字段，通过该字段进行增量的数据抽取
+        :return: dict {select:select column sql, from: from table sql}
+        """
         operate = MetadataOperate(subject_domain=cls.domain, object_type=cls.db_object_type)
 
         table_schema = operate.get_table_info(db_name=cls.db_name,
@@ -124,16 +155,25 @@ class Meta:
             return None
 
     @classmethod
-    def extract_data(cls,
-                     table_name,
-                     block_name="",
-                     block_key="",
-                     primary_column_name=None,
-                     extract_column_name=None):
+    def extract_data_to_full_index(cls,
+                                   table_name,
+                                   block_name="",
+                                   block_key="",
+                                   primary_column_name=None,
+                                   extract_column_name=None):
+        """
+        将数据导入全局检索表中
+        :param table_name: 抽取表表名
+        :param block_name: 该数据对应的业务域
+        :param block_key: 该数据在业务域中的关键词
+        :param primary_column_name: 抽取表主键
+        :param extract_column_name: 抽取表中的时间字段，通过该字段进行增量的数据抽取
+        :return: True or False 代表抽取成功或失败
+        """
 
-        execute_sql = cls.create_extract_table_sql(table_name=table_name,
-                                                   primary_column_name=primary_column_name,
-                                                   extract_column_name=extract_column_name)
+        execute_sql = cls.create_extract_table_sql_to_full_index(table_name=table_name,
+                                                                 primary_column_name=primary_column_name,
+                                                                 extract_column_name=extract_column_name)
         if execute_sql:
             meta_detector = MetaDetector(subject_domain=cls.domain, object_type=cls.db_object_type)
 

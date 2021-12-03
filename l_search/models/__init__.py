@@ -6,6 +6,7 @@
 """
 from .base import db, search, Column, InsertObject
 import uuid
+import enum
 from sqlalchemy.inspection import inspect
 
 
@@ -34,8 +35,14 @@ class FullTest(db.Model):
 
     @classmethod
     def search_index(cls, search_text, limit=20):
-        results = cls.query.msearch(query="{keyword}*".format(keyword=search_text), fields=['content'], limit=limit).all()
+        results = cls.query.msearch(query="{keyword}*".format(keyword=search_text), fields=['content'],
+                                    limit=limit).all()
         return results
+
+
+class DBObjectType(enum.Enum):
+    mysql = "mysql"
+    postgres = "postgresql"
 
 
 class FullTextIndex(db.Model, InsertObject):
@@ -52,6 +59,11 @@ class FullTextIndex(db.Model, InsertObject):
     table_primary_id = Column(db.String(150))
     table_extract_col = Column(db.String(150))
     row_content = Column(db.Text())
+
     #
     # def __repr__(self):
     #     return '<FullText:{}>'.format(self.title)
+
+    @classmethod
+    def update_search_index(cls, update=True):
+        search.create_index(FullTextIndex, update=True)

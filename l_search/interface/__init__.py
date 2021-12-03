@@ -7,20 +7,28 @@
 from flask_restx import Api
 from l_search import __title__, __version__
 from .search import api_search, QueryIndex
-from .mirror_data import api_mirror, ImportData, MirrorData
+from .mirror_data import (api_mirror,
+                          ImportData,
+                          ExtractToFullIndex,
+                          ConnectionInfo,
+                          SyncMeta)
 
 
 api = Api(title=__title__,
           version=__version__,)
 
 api.add_namespace(api_search, path="/search")
-api.add_namespace(api_mirror, path="/data")
+api.add_namespace(api_mirror, path="/mirror_data")
 
 api_search.add_resource(QueryIndex, "/index", endpoint="query_index")
 
 api_mirror.add_resource(ImportData, "/import_one", endpoint="import_data")
 
-api_mirror.add_resource(MirrorData, "/import_all", endpoint="mirror_data")
+api_mirror.add_resource(ExtractToFullIndex, "/extract/data_to_full_index", endpoint="mirror_data")
+
+api_mirror.add_resource(ConnectionInfo, "/meta/connection", endpoint="connection_info")
+
+api_mirror.add_resource(SyncMeta, "/meta/sync", endpoint="SyncMeta")
 
 
 
