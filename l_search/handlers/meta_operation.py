@@ -26,17 +26,17 @@ class Meta:
         :param app: flask app
         :return: None
         """
-        app.config.setdefault("SOURCE_DB_HOST", None)
-        app.config.setdefault("SOURCE_DB_PORT", None)
-        app.config.setdefault("SOURCE_DB_DB", None)
-        app.config.setdefault("SOURCE_DB_USER", None)
-        app.config.setdefault("SOURCE_DB_PWD", None)
+        app.config.setdefault("META_DB_HOST", None)
+        app.config.setdefault("META_DB_PORT", None)
+        app.config.setdefault("META_DB_DB", None)
+        app.config.setdefault("META_DB_USER", None)
+        app.config.setdefault("META_DB_PWD", None)
 
-        set_connect(host=app.config["SOURCE_DB_HOST"],
-                    port=app.config["SOURCE_DB_PORT"],
-                    db=app.config["SOURCE_DB_DB"],
-                    user=app.config["SOURCE_DB_USER"],
-                    pwd=app.config["SOURCE_DB_PWD"])
+        set_connect(host=app.config["META_DB_HOST"],
+                    port=app.config["META_DB_PORT"],
+                    db=app.config["META_DB_DB"],
+                    user=app.config["META_DB_USER"],
+                    pwd=app.config["META_DB_PWD"])
 
     @classmethod
     def add_connection_info(cls,
@@ -78,7 +78,7 @@ class Meta:
         :param extract_column_name: 抽取表中的时间字段，通过该字段进行增量的数据抽取
         :return: dict {select:select column sql, from: from table sql}
         """
-        operate = MetadataOperate(subject_domain=cls.domain, object_type=cls.db_object_type)
+        operate = MetadataOperate(subject_domain=cls.domain, object_type=models.DBObjectType[cls.db_object_type].value)
 
         table_schema = operate.get_table_info(db_name=cls.db_name,
                                               table_name=table_name,
@@ -95,12 +95,12 @@ class Meta:
             if col["is_extract_filter"] == 1:
                 extract_column_name = col["column_name"]
 
-            if col["column_type"].lower() in ["varchar", "string", "text", "char"]:
+            if col["column_type"].lower() in ["varchar", "string", "text", "char"] and "geo" not in col["column_name"]:
                 select_case_str = select_case_str + """
-                ,case when %(column_name)s is null then '' else %(column_name)s end as %(column_name)s """ % {
+                ,case when %(column_name)s is null then '*' else concat(%(column_name)s, '*') end as %(column_name)s """ % {
                     "column_name": col["column_name"]}
 
-                concat_str = concat_str + "%s, '*', " % col["column_name"]
+                concat_str = concat_str + "%s, " % col["column_name"]
 
         concat_str = concat_str.strip()[:-1]
 
@@ -175,7 +175,8 @@ class Meta:
                                                                  primary_column_name=primary_column_name,
                                                                  extract_column_name=extract_column_name)
         if execute_sql:
-            meta_detector = MetaDetector(subject_domain=cls.domain, object_type=cls.db_object_type)
+            meta_detector = MetaDetector(subject_domain=cls.domain,
+                                         object_type=models.DBObjectType[cls.db_object_type].value)
 
             sql_text = """
             %(select)s

@@ -7,19 +7,12 @@
 
 import logging
 
-SQLALCHEMY_DATABASE_URI = "mysql://metaadmin:meta4DWMM@192.168.1.222:3306/whoosh_index?charset=utf8"
+SQLALCHEMY_DATABASE_URI = "mysql://root:leadmap1102@192.168.1.107:7601/metadata_l_search?charset=utf8mb4"
 
-MSEARCH_INDEX_NAME = "whoosh_index"
-MSEARCH_BACKEND = "whoosh"
-MSEARCH_PRIMARY_KEY = "id"
-MSEARCH_ENABLE = True
-MSEARCH_LOGGER = logging.INFO
-SQLALCHEMY_TRACK_MODIFICATIONS = True
+META_DB_HOST = "192.168.1.222"
+META_DB_PORT = "3306"
+META_DB_DB = "metadata_l_search"
+META_DB_USER = "metaadmin"
+META_DB_PWD = "meta4DWMM"
 
 PROXIES_COUNT = 1
-
-SOURCE_DB_HOST = "192.168.1.222"
-SOURCE_DB_PORT = "3306"
-SOURCE_DB_DB = "metadata_l_search"
-SOURCE_DB_USER = "metaadmin"
-SOURCE_DB_PWD = "meta4DWMM"

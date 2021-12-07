@@ -11,8 +11,5 @@ if __name__ == '__main__':
 
 
 # flask
-# flask_msearch
-# whoosh
-# blinker
 # DWMM
 # flask_restx

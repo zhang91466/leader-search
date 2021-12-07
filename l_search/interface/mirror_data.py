@@ -11,25 +11,6 @@ from l_search.handlers.meta_operation import Meta
 
 api_mirror = Namespace('mirror_data', description='main function')
 
-demo_data_schema = {
-    "title": fields.String,
-    "content": fields.String,
-}
-
-demo_data_schema_model = api_mirror.model('data_schema', demo_data_schema)
-
-
-class ImportData(Resource):
-
-    @api_mirror.expect(demo_data_schema_model)
-    @api_mirror.marshal_with(demo_data_schema_model)
-    def post(self):
-        request_data = marshal(api_mirror.payload, demo_data_schema_model)
-        models.FullTest.create(**request_data)
-        search.create_index(update=True)
-        return {"title": "11", "content": "ddd"}, 200
-
-
 mirror_data_schema = {
     "domain": fields.String,
     "db_object_type": fields.String,
@@ -44,7 +25,7 @@ mirror_data_schema = {
 mirror_data_model = api_mirror.model("mirror_data", mirror_data_schema)
 
 
-class ExtractToFullIndex(Resource):
+class ExtractToFullTextIndexTable(Resource):
 
     @api_mirror.expect(mirror_data_model)
     def post(self):
@@ -58,7 +39,6 @@ class ExtractToFullIndex(Resource):
                                                          primary_column_name=request_data["primary_column_name"],
                                                          extract_column_name=request_data["extract_column_name"]
                                                          )
-        models.FullTextIndex.update_search_index()
         return {"is-ok": extract_result}, 200
 
 

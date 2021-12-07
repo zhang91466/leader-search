@@ -48,3 +48,4 @@ class InsertObject:
             logger.error("Bulk insert error: %s" % e)
 
         return False
+

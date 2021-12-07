@@ -8,36 +8,8 @@ from .base import db, search, Column, InsertObject
 import uuid
 import enum
 from sqlalchemy.inspection import inspect
-
-
-class FullTest(db.Model):
-    __tablename__ = "full_test_index_test"
-    __searchable__ = ["title", "content"]
-
-    id = Column(db.String(50), primary_key=True)
-    title = Column(db.String(50))
-    content = Column(db.Text)
-
-    def __repr__(self):
-        return '<FullText:{}>'.format(self.title)
-
-    @classmethod
-    def create(cls, title, content):
-        new = cls(id=uuid.uuid4().hex,
-                  title=title,
-                  content=content)
-        db.session.add(new)
-        db.session.commit()
-
-    @classmethod
-    def update_search_index(cls):
-        search.create_index(FullTest, update=True)
-
-    @classmethod
-    def search_index(cls, search_text, limit=20):
-        results = cls.query.msearch(query="{keyword}*".format(keyword=search_text), fields=['content'],
-                                    limit=limit).all()
-        return results
+from .mysql_full_text_search import FullText, FullTextSearch, FullTextMode
+from sqlalchemy import or_, and_, func
 
 
 class DBObjectType(enum.Enum):
@@ -45,9 +17,9 @@ class DBObjectType(enum.Enum):
     postgres = "postgresql"
 
 
-class FullTextIndex(db.Model, InsertObject):
+class FullTextIndex(db.Model, InsertObject, FullText):
     __tablename__ = "full_text_index"
-    __searchable__ = ["row_content"]
+    __fulltext_columns__ = ("row_content",)
 
     id = Column(db.String(300), primary_key=True)
     domain = Column(db.String(150))
@@ -60,10 +32,24 @@ class FullTextIndex(db.Model, InsertObject):
     table_extract_col = Column(db.String(150))
     row_content = Column(db.Text())
 
-    #
-    # def __repr__(self):
-    #     return '<FullText:{}>'.format(self.title)
-
     @classmethod
-    def update_search_index(cls, update=True):
-        search.create_index(FullTextIndex, update=True)
+    def search_index(cls,
+                     domain,
+                     db_object_type,
+                     search_text,
+                     block_name=None,
+                     block_key=None):
+        search_query = cls.query.filter(
+            and_(
+                cls.domain == domain,
+                cls.db_object_type == db_object_type,
+                FullTextSearch(search_text, cls, FullTextMode.DEFAULT))
+        )
+
+        if block_name:
+            search_query = search_query.filter(cls.block_name == block_name)
+
+        if block_key:
+            search_query = search_query.filter(cls.block_key == block_key)
+
+        return search_query.all()
