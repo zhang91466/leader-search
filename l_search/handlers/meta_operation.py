@@ -56,8 +56,33 @@ class Meta:
                                           "default_db": default_db})
 
     @classmethod
-    def get_connection_info(cls, domain, db_object_type):
-        return ConnectionOperate.get_info(subject_domain=domain, object_type=db_object_type)
+    def get_connection_info(cls, connection_id=None, domain=None, db_object_type=None):
+
+        def change_key_name(data):
+            data["connection_id"] = data.pop("id")
+            data["domain"] = data.pop("subject_domain")
+            data["db_object_type"] = data.pop("object_type")
+            data["host"] = data.pop("object_host")
+            data["port"] = data.pop("object_port")
+            data["account"] = data.pop("object_account")
+            data["pwd"] = data.pop("object_pwd")
+            data["default_db"] = data.pop("db_name")
+
+            data["db_object_type"] = models.DBObjectType(data["db_object_type"]).name
+            return data
+
+        if db_object_type:
+            db_object_type = models.DBObjectType[db_object_type].value
+
+        connection_info = ConnectionOperate.get_info(subject_domain=domain,
+                                                     object_type=db_object_type,
+                                                     connection_id=connection_id)
+        if isinstance(connection_info, dict):
+            connection_info = change_key_name(connection_info)
+        else:
+            connection_info = [change_key_name(c_data) for c_data in connection_info]
+
+        return connection_info
 
     @classmethod
     def sync_table_schema(cls, table_list=None, table_name_prefix=None):

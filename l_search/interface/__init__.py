@@ -9,25 +9,35 @@ from l_search import __title__, __version__
 from .search import api_search, QueryIndex
 from .mirror_data import (api_mirror,
                           ExtractToFullTextIndexTable,
-                          ConnectionInfo,
-                          SyncMeta)
-
+                          )
+from .data_meta import (api_meta,
+                        ConnectionInfo,
+                        ConnectionInfoCreate,
+                        SyncMeta)
 
 api = Api(title=__title__,
-          version=__version__,)
+          version=__version__, )
 
 api.add_namespace(api_search, path="/search")
-api.add_namespace(api_mirror, path="/mirror_data")
+api.add_namespace(api_mirror, path="/mirror")
+api.add_namespace(api_meta, path="/meta")
 
 api_search.add_resource(QueryIndex, "/index", endpoint="query_index")
 
-api_mirror.add_resource(ExtractToFullTextIndexTable, "/extract/data_to_full_index", endpoint="mirror_data")
+api_mirror.add_resource(ExtractToFullTextIndexTable, "/data_to_full_index", endpoint="mirror_data")
 
-api_mirror.add_resource(ConnectionInfo, "/meta/connection", endpoint="connection_info")
+api_meta.add_resource(ConnectionInfo,
+                      "/connections",
+                      "/connections/<domain>",
+                      "/connection/<domain>/<db_object_type>",
+                      "/connection/<int:connection_id>",
+                      endpoint="connection_info")
 
-api_mirror.add_resource(SyncMeta, "/meta/sync", endpoint="SyncMeta")
+api_meta.add_resource(ConnectionInfoCreate,
+                      "/connection/create",
+                      endpoint="connection_info_create")
 
-
+api_meta.add_resource(SyncMeta, "/sync", endpoint="SyncMeta")
 
 # Todo
 # 要设计一个通用的表结构
@@ -36,4 +46,3 @@ api_mirror.add_resource(SyncMeta, "/meta/sync", endpoint="SyncMeta")
 # 要有一个采集策略的逻辑
 # 要有一个定时采集的摸快
 # 要开发喂数据进来的接口
-

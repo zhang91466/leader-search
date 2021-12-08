@@ -9,7 +9,7 @@ from l_search import models
 from l_search.models import db, search
 from flask_msearch.backends import get_tables
 
-api_search = Namespace("search", description="Search index")
+api_search = Namespace("search", description="Search data with full text index")
 
 query_index_input_schema = {
     "domain": fields.String,
@@ -31,7 +31,6 @@ query_index_input = api_search.model('query_index_request_schema', query_index_i
 
 class QueryIndex(Resource):
 
-    @api_search.doc("Query")
     @api_search.expect(query_index_input)
     # @api_search.marshal_with(query_index_output)
     def post(self):
