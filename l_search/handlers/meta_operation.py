@@ -39,21 +39,34 @@ class Meta:
                     pwd=app.config["META_DB_PWD"])
 
     @classmethod
-    def add_connection_info(cls,
-                            domain,
-                            db_object_type,
-                            host,
-                            port,
-                            account,
-                            pwd,
-                            default_db):
-        return ConnectionOperate.add_row({"domain": domain,
-                                          "type": models.DBObjectType[db_object_type].value,
-                                          "host": host,
-                                          "port": port,
-                                          "account": account,
-                                          "pwd": pwd,
-                                          "default_db": default_db})
+    def add_connection_info(cls, input_data):
+
+        connection_id = None
+
+        if "connection_id" in input_data:
+            connection_id = input_data["connection_id"]
+
+        if connection_id:
+
+            for k in input_data.copy():
+                if input_data[k] is None:
+                    input_data.pop(k)
+
+            connection_id = ConnectionOperate.modify_info(connection_id=connection_id, infos=input_data)
+            add_result_info = ""
+        else:
+
+            infos = {"domain": input_data["domain"],
+                     "type": models.DBObjectType[input_data["db_object_type"]].value,
+                     "host": input_data["host"],
+                     "port": input_data["port"],
+                     "account": input_data["account"],
+                     "pwd": input_data["pwd"],
+                     "default_db": input_data["default_db"]}
+            connection_id, add_result_info = ConnectionOperate.add_row(infos=infos)
+
+        return {"connection_id": connection_id,
+                "add_result_info": add_result_info}
 
     @classmethod
     def get_connection_info(cls, connection_id=None, domain=None, db_object_type=None):

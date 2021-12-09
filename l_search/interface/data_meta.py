@@ -11,7 +11,7 @@ from l_search import models
 api_meta = Namespace('data_meta', description='Source data metabase')
 
 connection_info_schema = {
-    "connection_id": fields.Integer(description="数据库连接ID"),
+    "connection_id": fields.Integer(description="数据库连接ID,修改连接信息时使用", required=False),
     "domain": fields.String(description="系统域"),
     "db_object_type": fields.String(description="数据库类型", enum=models.DBObjectType._member_names_),
     "host": fields.String(description="数据库地址"),
@@ -24,19 +24,13 @@ connection_info_schema = {
 connection_info_model = api_meta.model("connection_info_schema", connection_info_schema)
 
 
-connection_create_schema = connection_info_schema.copy()
-connection_create_schema.pop("connection_id")
-connection_create_model = api_meta.model("connection_create_schema", connection_create_schema)
-
-
 class ConnectionInfoCreate(Resource):
 
-    @api_meta.expect(connection_create_model)
+    @api_meta.expect(connection_info_model)
     def post(self):
-        request_data = marshal(api_meta.payload, connection_create_model)
-        request_data.pop("connection_id")
-        add_result = Meta.add_connection_info(**request_data)
-        return "新链接信息添加状态 %s" % add_result, 200
+        request_data = marshal(api_meta.payload, connection_info_model)
+        add_result = Meta.add_connection_info(request_data)
+        return add_result, 200
 
 
 class ConnectionInfo(Resource):
