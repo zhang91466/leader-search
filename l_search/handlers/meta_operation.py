@@ -105,6 +105,33 @@ class Meta:
         return detector_schema_info
 
     @classmethod
+    def get_table_meta(cls, db_name, table_name=None):
+        operate = MetadataOperate(subject_domain=cls.domain, object_type=models.DBObjectType[cls.db_object_type].value)
+
+        if table_name:
+            get_info = {"table_name": table_name,
+                        "data": operate.get_table_info(db_name=db_name, table_name=table_name, is_extract=None)}
+        else:
+            tables_in_db = operate.get_tables(db_name=db_name)
+
+            get_info = []
+
+            for table in tables_in_db:
+                get_info.append({"table_name": table["table_name"],
+                                 "data": operate.get_table_info(db_name=db_name, table_name=table["table_name"],
+                                                                is_extract=None)}
+                                )
+
+        return get_info
+
+    @classmethod
+    def modify_column_info(cls, db_name, table_name, input_data):
+        operate = MetadataOperate(subject_domain=cls.domain, object_type=models.DBObjectType[cls.db_object_type].value)
+        return operate.modify_column_subsidiary_info(db_name=db_name,
+                                                     table_name=table_name,
+                                                     input_data=input_data)
+
+    @classmethod
     def create_extract_table_sql_to_full_index(cls,
                                                table_name,
                                                primary_column_name=None,

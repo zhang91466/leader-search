@@ -13,7 +13,8 @@ from .mirror_data import (api_mirror,
 from .data_meta import (api_meta,
                         ConnectionInfo,
                         ConnectionInfoCreate,
-                        SyncMeta)
+                        SyncMeta,
+                        MetaInfo)
 
 api = Api(title=__title__,
           version=__version__, )
@@ -37,7 +38,16 @@ api_meta.add_resource(ConnectionInfoCreate,
                       "/connection/create",
                       endpoint="connection_info_create")
 
-api_meta.add_resource(SyncMeta, "/sync", endpoint="SyncMeta")
+api_meta.add_resource(SyncMeta, "/sync", endpoint="sync_meta")
+
+api_meta.add_resource(MetaInfo,
+                      "/table/<domain>/<db_object_type>/<db_name>",
+                      endpoint="meta_info_get_whole_db_tables",
+                      methods=["GET"])
+
+api_meta.add_resource(MetaInfo,
+                      "/table/<domain>/<db_object_type>/<db_name>/<table_name>",
+                      endpoint="meta_info")
 
 # Todo
 # 要设计一个通用的表结构
