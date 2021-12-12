@@ -16,10 +16,12 @@ query_index_input_schema = {
     "db_object_type": fields.String,
     "block_name": fields.String,
     "block_key": fields.String,
-    "search_text": fields.String,
+    "search_text": fields.String(
+        description="+ stands for AND - stands for NOT. detail:https://dev.mysql.com/doc/refman/8.0/en/fulltext-boolean.html"),
 }
 
 query_index_input = api_search.model('query_index_request_schema', query_index_input_schema)
+
 
 # query_index_output_schema = {
 #     'title': fields.String,

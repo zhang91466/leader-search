@@ -10,6 +10,7 @@ from flask_msearch import Search
 from jieba.analyse import ChineseAnalyzer
 from l_search.handlers.meta_operation import Meta
 from l_search.utils.logger import Logger
+from sqlalchemy.event import listens_for
 
 logger = Logger()
 
@@ -30,6 +31,7 @@ class InsertObject:
         new = cls(**kwargs)
         db.session.add(new)
         db.session.commit()
+        return new
 
     @classmethod
     def bulk_insert(cls, input_data):
@@ -48,4 +50,17 @@ class InsertObject:
             logger.error("Bulk insert error: %s" % e)
 
         return False
+
+class TimestampMixin(object):
+    updated_at = Column(db.DateTime(True), default=db.func.now(), nullable=False)
+    created_at = Column(db.DateTime(True), default=db.func.now(), nullable=False)
+
+
+@listens_for(TimestampMixin, "before_update", propagate=True)
+def timestamp_before_update(mapper, connection, target):
+    # Check if we really want to update the updated_at value
+    if hasattr(target, "skip_updated_at"):
+        return
+
+    target.updated_at = db.func.now()
 

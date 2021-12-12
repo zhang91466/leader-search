@@ -127,6 +127,8 @@ class Meta:
     @classmethod
     def modify_column_info(cls, db_name, table_name, input_data):
         operate = MetadataOperate(subject_domain=cls.domain, object_type=models.DBObjectType[cls.db_object_type].value)
+        if isinstance(input_data, dict):
+            input_data = [input_data]
         return operate.modify_column_subsidiary_info(db_name=db_name,
                                                      table_name=table_name,
                                                      input_data=input_data)
@@ -160,7 +162,9 @@ class Meta:
             if col["is_extract_filter"] == 1:
                 extract_column_name = col["column_name"]
 
-            if col["column_type"].lower() in ["varchar", "string", "text", "char"] and "geo" not in col["column_name"]:
+            if col["column_type"].lower() in ["varchar", "string", "text", "char"] \
+                    and "geo" not in col["column_name"] \
+                    and col["is_extract"] == 1:
                 select_case_str = select_case_str + """
                 ,case when %(column_name)s is null then '*' else concat(%(column_name)s, '*') end as %(column_name)s """ % {
                     "column_name": col["column_name"]}
@@ -175,24 +179,13 @@ class Meta:
             sql_select = """
             select 
             concat('%(id_tag)s','-',%(table_primary_id)s) as id,
-            '%(domain)s' as domain
-            ,'%(db_object_type)s' as db_object_type
-            ,'%(db_name)s' as db_name
-            ,'%(table_name)s' as table_name
-            ,'%(table_primary_id)s' as table_primary_id
-            ,'%(table_extract_col)s' as table_extract_col
             ,concat(%(row_content)s) as row_content
             
             """ % {
                 "id_tag": hashlib.md5(
                     str("%s-%s-%s-%s" % (cls.domain, cls.db_object_type, cls.db_name, table_name)).encode(
                         "utf-8")).hexdigest(),
-                "domain": cls.domain,
-                "db_object_type": cls.db_object_type,
-                "db_name": cls.db_name,
-                "table_name": table_name,
                 "table_primary_id": primary_column_name,
-                "table_extract_col": extract_column_name,
                 "row_content": concat_str
             }
 
@@ -207,8 +200,19 @@ class Meta:
                    "case_col": select_case_str,
                    "table_name": table_name}
 
+            extract_data_info = {
+                "domain": cls.domain,
+                "db_object_type": cls.db_object_type,
+                "db_name": cls.db_name,
+                "table_name": table_name,
+                "table_primary_id": primary_column_name,
+                "table_extract_col": extract_column_name,
+            }
+            extract_data_info_insert = models.ExtractDataInfo.create(**extract_data_info)
+
             return {"select": sql_select,
-                    "from": sql_from}
+                    "from": sql_from,
+                    "extract_data_info_id": extract_data_info_insert.id}
 
         else:
             if primary_column_name is None:
@@ -245,10 +249,12 @@ class Meta:
 
             sql_text = """
             %(select)s
+            ,%(extract_data_info_id) as extract_data_info_id
             ,'%(block_name)s' as block_name
             ,'%(block_key)s' as block_key
             %(from)s
             """ % {"select": execute_sql["select"],
+                   "extract_data_info_id": execute_sql["extract_data_info_id"],
                    "block_name": block_name,
                    "block_key": block_key,
                    "from": execute_sql["from"]}
