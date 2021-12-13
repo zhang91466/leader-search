@@ -20,14 +20,13 @@ class LSearch(Flask):
 
 
 def create_app():
-    from .models.base import db, search, meta_info
+    from .models.base import db, meta_info
     from .interface import api
     from . import migrate
 
 
     app = LSearch()
 
-    search.init_app(app)
     db.init_app(app)
     migrate.init_app(app, db)
     api.init_app(app)

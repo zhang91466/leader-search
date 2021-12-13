@@ -178,7 +178,7 @@ class Meta:
 
             sql_select = """
             select 
-            concat('%(id_tag)s','-',%(table_primary_id)s) as id,
+            concat('%(id_tag)s','-',%(table_primary_id)s) as id
             ,concat(%(row_content)s) as row_content
             
             """ % {
@@ -208,7 +208,8 @@ class Meta:
                 "table_primary_id": primary_column_name,
                 "table_extract_col": extract_column_name,
             }
-            extract_data_info_insert = models.ExtractDataInfo.create(**extract_data_info)
+
+            extract_data_info_insert = models.ExtractDataInfo.upsert(**extract_data_info)
 
             return {"select": sql_select,
                     "from": sql_from,
@@ -249,7 +250,7 @@ class Meta:
 
             sql_text = """
             %(select)s
-            ,%(extract_data_info_id) as extract_data_info_id
+            ,%(extract_data_info_id)s as extract_data_info_id
             ,'%(block_name)s' as block_name
             ,'%(block_key)s' as block_key
             %(from)s

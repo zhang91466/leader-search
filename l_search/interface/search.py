@@ -6,8 +6,6 @@
 """
 from flask_restx import Namespace, Resource, fields, marshal
 from l_search import models
-from l_search.models import db, search
-from flask_msearch.backends import get_tables
 
 api_search = Namespace("search", description="Search data with full text index")
 

@@ -4,7 +4,7 @@
 @author:zhangwei
 @file:__init__.py
 """
-from .base import db, search, Column, InsertObject, TimestampMixin
+from .base import db, Column, InsertObject, TimestampMixin
 import uuid
 import enum
 from sqlalchemy.inspection import inspect
@@ -30,7 +30,40 @@ class ExtractDataInfo(db.Model, InsertObject, TimestampMixin):
     latest_table_primary_id = Column(db.String(150), nullable=True)
     latest_extract_date = Column(db.DateTime(True), nullable=True)
 
-    # def get_by_table_name(self, domain, db_object_type, db_name, table_name):
+    @classmethod
+    def get_by_table_name(cls, domain, db_object_type, db_name, table_name):
+        select_query = cls.query.filter(and_(cls.domain == domain,
+                                             cls.db_object_type == db_object_type,
+                                             cls.db_name == db_name,
+                                             cls.table_name == table_name))
+        return select_query.first()
+
+    @classmethod
+    def upsert(cls, **kwargs):
+
+        is_exists = cls.get_by_table_name(domain=kwargs["domain"],
+                                          db_object_type=kwargs["db_object_type"],
+                                          db_name=kwargs["db_name"],
+                                          table_name=kwargs["table_name"])
+        if is_exists:
+            if "table_primary_id" in kwargs and is_exists.table_primary_id != kwargs["table_primary_id"]:
+                is_exists.table_primary_id = kwargs["table_primary_id"]
+
+            if "table_extract_col" in kwargs and is_exists.table_extract_col != kwargs["table_extract_col"]:
+                is_exists.table_extract_col = kwargs["table_extract_col"]
+
+            if "latest_table_primary_id" in kwargs and is_exists.latest_table_primary_id != kwargs[
+                "latest_table_primary_id"]:
+                is_exists.latest_table_primary_id = kwargs["latest_table_primary_id"]
+
+            if "latest_extract_date" in kwargs and is_exists.latest_extract_date != kwargs["latest_extract_date"]:
+                is_exists.latest_extract_date = kwargs["latest_extract_date"]
+
+            db.session.add(is_exists)
+            db.session.commit()
+            return is_exists
+        else:
+            return cls.create(**kwargs)
 
 
 class FullTextIndex(db.Model, InsertObject, FullText):

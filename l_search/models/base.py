@@ -6,8 +6,6 @@
 """
 import functools
 from flask_sqlalchemy import SQLAlchemy
-from flask_msearch import Search
-from jieba.analyse import ChineseAnalyzer
 from l_search.handlers.meta_operation import Meta
 from l_search.utils.logger import Logger
 from sqlalchemy.event import listens_for
@@ -18,9 +16,6 @@ db = SQLAlchemy()
 db.configure_mappers()
 
 Column = functools.partial(db.Column, nullable=False)
-
-search = Search(db=db,
-                analyzer=ChineseAnalyzer())
 
 meta_info = Meta()
 
@@ -44,8 +39,9 @@ class InsertObject:
             if len(input_data) > 0 and isinstance(input_data, list):
                 db.session.execute(cls.__table__.insert(), input_data)
                 db.session.commit()
-                logger.info("Table %s insert count %d" % (cls.__table__, len(input_data)))
-                return True
+                row_count = len(input_data)
+                logger.info("Table %s insert count %d" % (cls.__table__, row_count))
+                return row_count
         except Exception as e:
             logger.error("Bulk insert error: %s" % e)
 
