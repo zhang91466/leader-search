@@ -39,31 +39,32 @@ class ExtractDataInfo(db.Model, InsertObject, TimestampMixin):
         return select_query.first()
 
     @classmethod
-    def upsert(cls, **kwargs):
+    def upsert(cls, table_data=None, **kwargs):
 
-        is_exists = cls.get_by_table_name(domain=kwargs["domain"],
-                                          db_object_type=kwargs["db_object_type"],
-                                          db_name=kwargs["db_name"],
-                                          table_name=kwargs["table_name"])
-        if is_exists:
-            if "table_primary_id" in kwargs and is_exists.table_primary_id != kwargs["table_primary_id"]:
-                is_exists.table_primary_id = kwargs["table_primary_id"]
+        if table_data is None:
+            table_data = cls.get_by_table_name(domain=kwargs["domain"],
+                                               db_object_type=kwargs["db_object_type"],
+                                               db_name=kwargs["db_name"],
+                                               table_name=kwargs["table_name"])
+            if table_data:
+                if "table_primary_id" in kwargs and table_data.table_primary_id != kwargs["table_primary_id"]:
+                    table_data.table_primary_id = kwargs["table_primary_id"]
 
-            if "table_extract_col" in kwargs and is_exists.table_extract_col != kwargs["table_extract_col"]:
-                is_exists.table_extract_col = kwargs["table_extract_col"]
+                if "table_extract_col" in kwargs and table_data.table_extract_col != kwargs["table_extract_col"]:
+                    table_data.table_extract_col = kwargs["table_extract_col"]
 
-            if "latest_table_primary_id" in kwargs and is_exists.latest_table_primary_id != kwargs[
-                "latest_table_primary_id"]:
-                is_exists.latest_table_primary_id = kwargs["latest_table_primary_id"]
+                if "latest_table_primary_id" in kwargs and table_data.latest_table_primary_id != kwargs[
+                    "latest_table_primary_id"]:
+                    table_data.latest_table_primary_id = kwargs["latest_table_primary_id"]
 
-            if "latest_extract_date" in kwargs and is_exists.latest_extract_date != kwargs["latest_extract_date"]:
-                is_exists.latest_extract_date = kwargs["latest_extract_date"]
+                if "latest_extract_date" in kwargs and table_data.latest_extract_date != kwargs["latest_extract_date"]:
+                    table_data.latest_extract_date = kwargs["latest_extract_date"]
+            else:
+                return cls.create(**kwargs)
 
-            db.session.add(is_exists)
-            db.session.commit()
-            return is_exists
-        else:
-            return cls.create(**kwargs)
+        db.session.add(table_data)
+        db.session.commit()
+        return table_data
 
 
 class FullTextIndex(db.Model, InsertObject, FullText):
@@ -99,3 +100,13 @@ class FullTextIndex(db.Model, InsertObject, FullText):
             search_query = search_query.filter(cls.block_key == block_key)
 
         return search_query.all()
+
+    @classmethod
+    def delete_data(cls, extract_data_info_id=None, id_list=None):
+
+        if extract_data_info_id:
+            cls.query.filter(cls.extract_data_info_id == extract_data_info_id).delete()
+            db.session.commit()
+        elif id_list:
+            cls.query.filter(cls.id.in_(id_list)).delete()
+            db.session.commit()

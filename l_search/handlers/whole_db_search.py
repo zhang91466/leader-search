@@ -9,6 +9,7 @@ from l_search import models
 from DWMM.operate.metadata_info import MetadataOperate
 from DWMM.source_meta_operate.handle.meta_handle import MetaDetector
 import hashlib
+import pandas as pd
 
 logger = Logger()
 
@@ -17,6 +18,11 @@ class WholeDbSearch:
     domain = ""
     db_object_type = ""
     db_name = ""
+
+    @classmethod
+    def get_full_text_index_id_prefix(cls, table_name):
+        return hashlib.md5(
+            str("%s-%s-%s-%s" % (cls.domain, cls.db_object_type, cls.db_name, table_name)).encode("utf-8")).hexdigest()
 
     @classmethod
     def create_extract_table_sql_to_full_index(cls,
@@ -30,8 +36,10 @@ class WholeDbSearch:
         :param primary_column_name: 抽取表主键
         :param extract_column_name: 抽取表中的时间字段，通过该字段进行增量的数据抽取
         :param where_stat: 抽取where条件
-        :return: dict {select:select column sql, from: from table sql}
+        :return: dict {select:select column sql, from: from table sql, latest_date: 获取最终抽取时间与最大主键id}
         """
+        string_column_type = ["varchar", "string", "text", "char"]
+
         operate = MetadataOperate(subject_domain=cls.domain, object_type=models.DBObjectType[cls.db_object_type].value)
 
         table_schema = operate.get_table_info(db_name=cls.db_name,
@@ -40,16 +48,20 @@ class WholeDbSearch:
                                               )
         select_case_str = ""
         concat_str = ""
+        primary_col_type_is_int = True
         for col in table_schema:
 
             if col["is_primary"] == 1:
                 primary_column_name = col["column_name"]
+
+                if col["column_type"] in string_column_type:
+                    primary_col_type_is_int = False
                 continue
 
             if col["is_extract_filter"] == 1:
                 extract_column_name = col["column_name"]
 
-            if col["column_type"].lower() in ["varchar", "string", "text", "char"] \
+            if col["column_type"].lower() in string_column_type \
                     and "geo" not in col["column_name"] \
                     and col["is_extract"] == 1:
                 select_case_str = select_case_str + """
@@ -69,9 +81,7 @@ class WholeDbSearch:
             ,concat(%(row_content)s) as row_content
 
             """ % {
-                "id_tag": hashlib.md5(
-                    str("%s-%s-%s-%s" % (cls.domain, cls.db_object_type, cls.db_name, table_name)).encode(
-                        "utf-8")).hexdigest(),
+                "id_tag": cls.get_full_text_index_id_prefix(table_name=table_name),
                 "table_primary_id": primary_column_name,
                 "row_content": concat_str
             }
@@ -89,8 +99,29 @@ class WholeDbSearch:
                    "table_name": table_name,
                    "where_stat": where_stat}
 
+            if primary_col_type_is_int:
+                get_latest_date_sql = """
+                                select 
+                                max(%(table_primary_id)s) as latest_table_primary_id
+                                ,max(%(table_extract_col)s) as latest_extract_date
+                                from %(table_name)s""" % {"table_primary_id": primary_column_name,
+                                                          "table_extract_col": extract_column_name,
+                                                          "table_name": table_name}
+            else:
+                get_latest_date_sql = """
+                                select 
+                                0 as latest_table_primary_id
+                                ,max(%(table_extract_col)s) as latest_extract_date
+                                from %(table_name)s""" % {"table_extract_col": extract_column_name,
+                                                          "table_name": table_name}
+
             return {"select": sql_select,
-                    "from": sql_from}
+                    "from": sql_from,
+                    "latest_date": get_latest_date_sql,
+                    "primary_col_type_is_int": primary_col_type_is_int,
+                    "table_primary_id": primary_column_name,
+                    "table_extract_col": extract_column_name
+                    }
 
         else:
             if primary_column_name is None:
@@ -102,25 +133,14 @@ class WholeDbSearch:
             return None
 
     @classmethod
-    def get_latest_data_tag_sql(cls, table_name, primary_column_name, extract_column_name):
-        sql_stat = """
-                    select 
-                    max(%(table_primary_id)s) as latest_table_primary_id
-                    ,max(%(table_extract_col)s) as latest_extract_date
-                    from %(table_name)s)""" % {"table_primary_id": primary_column_name,
-                                               "table_extract_col": extract_column_name,
-                                               "table_name": table_name}
-        return sql_stat
-
-    @classmethod
     def extract_data(cls,
                      execute_sql,
                      extract_data_info_id,
                      block_name="",
                      block_key=""):
         """
-        将数据导入全局检索表中
-        :param execute_sql: 抽取的sql
+        将数据从目标库中导出
+        :param execute_sql: 来自create_extract_table_sql_to_full_index的返回值
         :param block_name: 该数据对应的业务域
         :param block_key: 该数据在业务域中的关键词
         :param extract_data_info_id: ExtractDataInfo的id
@@ -144,16 +164,34 @@ class WholeDbSearch:
 
         logger.debug("抽取sql: %s" % sql_text)
 
-        execute_data = meta_detector.execute_select_sql(sql_text=sql_text)
+        need_insert_data = meta_detector.execute_select_sql(sql_text=sql_text)
 
-        return execute_data
+        get_last_date = meta_detector.execute_select_sql(sql_text=execute_sql["latest_date"])
+
+        return need_insert_data, get_last_date[0]
 
     @classmethod
-    def store_data(cls,
-                   table_name,
-                   block_name="",
-                   block_key="",
-                   is_full=0):
+    def store_data(cls, insert_data, get_last_date, extract_data_info):
+        """
+        将数据导入全局表中
+        :param insert_data:
+        :param get_last_date:
+        :param extract_data_info:
+        :return:
+        """
+        insert_success_row_count = models.FullTextIndex.bulk_insert(input_data=insert_data)
+
+        extract_data_info.latest_table_primary_id = get_last_date["latest_table_primary_id"]
+        extract_data_info.latest_extract_date = get_last_date["latest_extract_date"]
+        models.ExtractDataInfo.upsert(table_data=extract_data_info)
+        return insert_success_row_count
+
+    @classmethod
+    def extract_and_store(cls,
+                          table_name,
+                          block_name="",
+                          block_key="",
+                          is_full=0):
         """
         如果是全量
             删除该表的所有信息
@@ -179,23 +217,57 @@ class WholeDbSearch:
                                                                      db_name=cls.db_name,
                                                                      table_name=table_name)
 
+        where_stat = ""
+        # 增量抽取
+        if is_full == 0 and extract_data_info is not None:
+            where_stat = """
+                        where %(latest_extract_date)s > '%(latest_extract_date_value)s'
+                         """ % {"latest_extract_date": extract_data_info.table_extract_col,
+                                "latest_extract_date_value": extract_data_info.latest_extract_date}
+
+        extract_sql = cls.create_extract_table_sql_to_full_index(table_name=table_name,
+                                                                 where_stat=where_stat)
+
+        if extract_data_info is None:
+            extract_data_info = models.ExtractDataInfo.create(domain=cls.domain,
+                                                              db_object_type=cls.db_object_type,
+                                                              db_name=cls.db_name,
+                                                              table_name=table_name,
+                                                              table_primary_id=extract_sql["table_primary_id"],
+                                                              table_extract_col=extract_sql["table_extract_col"]
+                                                              )
+
+        extract_data, get_last_date_data = cls.extract_data(execute_sql=extract_sql,
+                                                            extract_data_info_id=extract_data_info.id,
+                                                            block_name=block_name,
+                                                            block_key=block_key)
+
+        # 处理已经存在的数据
         # 全量
         if is_full == 1:
-            extract_sql = cls.create_extract_table_sql_to_full_index(table_name=table_name)
-            extract_data = cls.extract_data(execute_sql=extract_sql,
-                                            extract_data_info_id=extract_data_info.id,
-                                            block_name=block_name,
-                                            block_key=block_key)
             models.FullTextIndex.delete_data(extract_data_info_id=extract_data_info.id)
         # 增量
         else:
-            where_stat = """
-                        where %(latest_extract_date)s > %(latest_extract_date_value)s
-                         """ % {"latest_extract_date": extract_data_info.table_extract_col,
-                                "latest_extract_date_value": extract_data_info.latest_extract_date}
-            extract_sql = cls.create_extract_table_sql_to_full_index(table_name=table_name,
-                                                                     where_stat=where_stat)
-            extract_data = cls.extract_data(execute_sql=extract_sql,
-                                            extract_data_info_id=extract_data_info.id,
-                                            block_name=block_name,
-                                            block_key=block_key)
+            # merge过程
+
+            # 把抽取出来的数据转为df
+            extract_data_df = pd.DataFrame(extract_data)
+            extract_data_df["id_prefix"] = cls.get_full_text_index_id_prefix(table_name=table_name)
+
+            extract_data_df[["id_prefix", "full_text_index_id"]] = extract_data_df["id"].str.split('-', 1, expand=True)
+
+            if extract_sql["primary_col_type_is_int"]:
+                extract_data_df_less_max_p_id_df = extract_data_df[
+                    extract_data_df["full_text_index_id"].astype(int) < int(extract_data_info.latest_table_primary_id)]
+                extract_data_df_less_max_p_id_list = extract_data_df_less_max_p_id_df["id"].to_list()
+            else:
+                extract_data_df_less_max_p_id_list = extract_data_df["id"].to_list()
+
+            # 删除已经确定的id
+            models.FullTextIndex.delete_data(id_list=extract_data_df_less_max_p_id_list)
+
+        # 插入数据
+        insert_row_count = cls.store_data(insert_data=extract_data,
+                                          get_last_date=get_last_date_data,
+                                          extract_data_info=extract_data_info)
+        return insert_row_count
