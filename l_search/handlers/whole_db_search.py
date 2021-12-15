@@ -271,3 +271,5 @@ class WholeDbSearch:
                                           get_last_date=get_last_date_data,
                                           extract_data_info=extract_data_info)
         return insert_row_count
+
+

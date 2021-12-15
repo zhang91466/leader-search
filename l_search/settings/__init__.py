@@ -5,22 +5,11 @@
 @file:__init__.py
 """
 
-import logging
-
 SQLALCHEMY_DATABASE_URI = "mysql://root:leadmap1102@192.168.1.107:7601/metadata_l_search?charset=utf8mb4"
-
-# META_DB_HOST = "192.168.1.222"
-# META_DB_PORT = "3306"
-# META_DB_DB = "metadata_l_search"
-# META_DB_USER = "metaadmin"
-# META_DB_PWD = "meta4DWMM"
 
 PROXIES_COUNT = 1
 
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-META_DB_HOST = "localhost"
-META_DB_PORT = "3306"
-META_DB_DB = "metadata_l_search"
-META_DB_USER = "root"
-META_DB_PWD = "Abc@2016"
+CELERY_BROKER_URL = "redis://localhost:6379/2"
+CELERY_RESULT_BACKEND = "redis://localhost:6379/2"

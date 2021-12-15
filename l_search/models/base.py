@@ -17,8 +17,6 @@ db.configure_mappers()
 
 Column = functools.partial(db.Column, nullable=False)
 
-meta_info = Meta()
-
 
 class InsertObject:
     @classmethod
@@ -59,4 +57,5 @@ def timestamp_before_update(mapper, connection, target):
         return
 
     target.updated_at = db.func.now()
+
 

@@ -6,10 +6,7 @@
 """
 from l_search.utils.logger import Logger
 from l_search import models
-from DWMM import set_connect
-from DWMM.operate.connect_info import ConnectionOperate
-from DWMM.operate.metadata_info import MetadataOperate
-from DWMM.source_meta_operate.handle.meta_handle import MetaDetector
+from l_search import settings
 
 logger = Logger()
 
@@ -18,24 +15,6 @@ class Meta:
     domain = ""
     db_object_type = ""
     db_name = ""
-
-    def init_app(self, app):
-        """
-        元数据管理系统的对应数据库必须是mysql
-        :param app: flask app
-        :return: None
-        """
-        app.config.setdefault("META_DB_HOST", None)
-        app.config.setdefault("META_DB_PORT", None)
-        app.config.setdefault("META_DB_DB", None)
-        app.config.setdefault("META_DB_USER", None)
-        app.config.setdefault("META_DB_PWD", None)
-
-        set_connect(host=app.config["META_DB_HOST"],
-                    port=app.config["META_DB_PORT"],
-                    db=app.config["META_DB_DB"],
-                    user=app.config["META_DB_USER"],
-                    pwd=app.config["META_DB_PWD"])
 
     @classmethod
     def add_connection_info(cls, input_data):
@@ -51,7 +30,7 @@ class Meta:
                 if input_data[k] is None:
                     input_data.pop(k)
 
-            connection_id = ConnectionOperate.modify_info(connection_id=connection_id, infos=input_data)
+            models.DBConnect.modify(new_data=input_data, connection_id=connection_id)
             add_result_info = ""
         else:
 
@@ -62,7 +41,7 @@ class Meta:
                      "account": input_data["account"],
                      "pwd": input_data["pwd"],
                      "default_db": input_data["default_db"]}
-            connection_id, add_result_info = ConnectionOperate.add_row(infos=infos)
+            connection_id, add_result_info = models.DBConnect.add_row(infos=infos)
 
         return {"connection_id": connection_id,
                 "add_result_info": add_result_info}
@@ -72,13 +51,7 @@ class Meta:
 
         def change_key_name(data):
             data["connection_id"] = data.pop("id")
-            data["domain"] = data.pop("subject_domain")
-            data["db_object_type"] = data.pop("object_type")
-            data["host"] = data.pop("object_host")
-            data["port"] = data.pop("object_port")
-            data["account"] = data.pop("object_account")
-            data["pwd"] = data.pop("object_pwd")
-            data["default_db"] = data.pop("db_name")
+            data["db_object_type"] = data.pop("type")
 
             data["db_object_type"] = models.DBObjectType(data["db_object_type"]).name
             return data
@@ -86,9 +59,9 @@ class Meta:
         if db_object_type:
             db_object_type = models.DBObjectType[db_object_type].value
 
-        connection_info = ConnectionOperate.get_info(subject_domain=domain,
-                                                     object_type=db_object_type,
-                                                     connection_id=connection_id)
+        connection_info = models.DBConnect.get_by_domain(domain=domain,
+                                                         type=db_object_type,
+                                                         connection_id=connection_id)
         if isinstance(connection_info, dict):
             connection_info = change_key_name(connection_info)
         else:
@@ -97,38 +70,106 @@ class Meta:
         return connection_info
 
     @classmethod
-    def sync_table_schema(cls, table_list=None, table_name_prefix=None):
-        meta_detector = MetaDetector(subject_domain=cls.domain,
-                                     object_type=models.DBObjectType[cls.db_object_type].value)
-        detector_schema_info = meta_detector.detector_schema(tables=table_list, table_name_prefix=table_name_prefix)
-        return detector_schema_info
+    def get_table_meta(cls, default_db, table_name=None):
 
-    @classmethod
-    def get_table_meta(cls, db_name, table_name=None):
-        operate = MetadataOperate(subject_domain=cls.domain, object_type=models.DBObjectType[cls.db_object_type].value)
+        def get_with_table_name(t_name):
+            data = models.DBMetadata.get_table_info(domain=cls.domain,
+                                                    type=models.DBObjectType[cls.db_object_type].value,
+                                                    default_db=default_db,
+                                                    table_name=t_name,
+                                                    is_extract=None)
+
+            return {"table_name": t_name,
+                    "data": models.convert_to_dict(data)}
 
         if table_name:
-            get_info = {"table_name": table_name,
-                        "data": operate.get_table_info(db_name=db_name, table_name=table_name, is_extract=None)}
+            get_info = get_with_table_name(t_name=table_name)
+
         else:
-            tables_in_db = operate.get_tables(db_name=db_name)
+            tables_in_db = models.DBMetadata.get_tables(domain=cls.domain,
+                                                        type=models.DBObjectType[cls.db_object_type].value,
+                                                        db_name=default_db)
 
             get_info = []
 
             for table in tables_in_db:
-                get_info.append({"table_name": table["table_name"],
-                                 "data": operate.get_table_info(db_name=db_name, table_name=table["table_name"],
-                                                                is_extract=None)}
-                                )
+                get_info.append(get_with_table_name(t_name=table.table_name))
 
         return get_info
 
     @classmethod
-    def modify_column_info(cls, db_name, table_name, input_data):
-        operate = MetadataOperate(subject_domain=cls.domain, object_type=models.DBObjectType[cls.db_object_type].value)
+    def modify_column_info(cls, default_db, table_name, input_data):
+
         if isinstance(input_data, dict):
             input_data = [input_data]
-        return operate.modify_column_subsidiary_info(db_name=db_name,
-                                                     table_name=table_name,
-                                                     input_data=input_data)
 
+        table_info = models.DBMetadata.get_table_info(domain=cls.domain,
+                                                      type=models.DBObjectType[cls.db_object_type].value,
+                                                      default_db=default_db,
+                                                      table_name=table_name,
+                                                      is_extract=None)
+
+        column_id_list = [col["id"] for col in table_info]
+
+        change = 0
+        failed_info = ""
+        for row in input_data:
+            if row["id"] in column_id_list:
+                modify_result = models.DBMetadata.modify(column_id=row["id"], input_data=row)
+                change += 1
+
+                if modify_result is not None:
+                    failed_info = modify_result
+        return {"change_success": change,
+                "change_info": failed_info}
+
+    @classmethod
+    def add_table_info(cls, input_meta):
+        """
+        一个表的列信息
+        :param input_meta:[{"db_name":"",
+                            "table_name":"",
+                            "column_name":"",
+                            "column_type":"",
+                            "column_type_length":"",
+                            "column_comment":"",
+                            "column_position":"",
+                            }]
+        """
+        required_keys = ["default_db",
+                         "table_name",
+                         "column_name",
+                         "column_type",
+                         "column_type_length",
+                         "column_comment",
+                         "column_position"]
+
+        input_meta_keys = input_meta[0].keys()
+
+        check_keys = list(set(required_keys) - set(input_meta_keys))
+
+        # 确保key都存在
+        if len(check_keys) == 0:
+
+            for items in input_meta:
+
+                update_dict = {
+                    "domain": cls.domain,
+                    "type": cls.db_object_type,
+                }
+
+                if "is_extract" not in items:
+                    update_dict["is_extract"] = 0
+
+                if "is_primary" not in items:
+                    update_dict["is_primary"] = 0
+
+                if "is_extract_filter" not in items:
+                    update_dict["is_extract_filter"] = 0
+
+                if "filter_default" not in items:
+                    update_dict["filter_default"] = ""
+
+                items.update(update_dict)
+
+                models.DBMetadata.create(**items)

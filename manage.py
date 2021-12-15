@@ -10,7 +10,3 @@ if __name__ == '__main__':
     manager()
 
 
-# flask
-# DWMM
-# flask_restx
-# pandas

@@ -6,6 +6,7 @@
 """
 from flask_restx import Namespace, Resource, fields, marshal
 from l_search.handlers.meta_operation import Meta
+from l_search.handlers.source_meta_operate.handle.meta_handle import MetaDetector
 from l_search import models
 
 api_meta = Namespace('data_meta', description='Source data metabase')
@@ -58,10 +59,11 @@ class SyncMeta(Resource):
     @api_meta.expect(sync_meta_model)
     def post(self):
         request_data = marshal(api_meta.payload, sync_meta_model)
-        Meta.domain = request_data["domain"]
-        Meta.db_object_type = request_data["db_object_type"]
-        schema_info = Meta.sync_table_schema(table_list=request_data["table_list"],
-                                             table_name_prefix=request_data["table_name_prefix"])
+
+        meta_detector = MetaDetector(domain=request_data["domain"],
+                                     type=models.DBObjectType[request_data["db_object_type"]].value)
+        schema_info = meta_detector.detector_schema(tables=request_data["table_list"],
+                                                    table_name_prefix=request_data["table_name_prefix"])
         return schema_info, 200
 
 
@@ -99,7 +101,7 @@ class MetaInfo(Resource):
     def get(self, domain, db_object_type, db_name, table_name=None):
         Meta.domain = domain
         Meta.db_object_type = db_object_type
-        get_result = Meta.get_table_meta(db_name=db_name, table_name=table_name)
+        get_result = Meta.get_table_meta(default_db=db_name, table_name=table_name)
         return_data = marshal(get_result, meta_info_list_model)
         return return_data, 200
 
@@ -108,5 +110,5 @@ class MetaInfo(Resource):
         request_data = marshal(api_meta.payload, meta_info_modify_model)
         Meta.domain = domain
         Meta.db_object_type = db_object_type
-        modify_status = Meta.modify_column_info(db_name=db_name, table_name=table_name, input_data=request_data)
+        modify_status = Meta.modify_column_info(default_db=db_name, table_name=table_name, input_data=request_data)
         return modify_status, 200

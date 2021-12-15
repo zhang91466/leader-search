@@ -11,3 +11,4 @@ __title__ = "Leadmap full text search"
 __version__ = "0.0.1"
 
 migrate = Migrate()
+

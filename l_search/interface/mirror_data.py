@@ -7,7 +7,7 @@
 from flask_restx import Namespace, Resource, fields, marshal
 from l_search import models
 from l_search.models import db
-from l_search.handlers.whole_db_search import WholeDbSearch
+from l_search.tasks import full_text_index_extract
 
 api_mirror = Namespace('mirror_data', description='Extract data from source')
 
@@ -31,12 +31,12 @@ class ExtractToFullTextIndexTable(Resource):
     @api_mirror.expect(mirror_data_model)
     def post(self):
         request_data = marshal(api_mirror.payload, mirror_data_model)
-        WholeDbSearch.domain = request_data["domain"]
-        WholeDbSearch.db_object_type = request_data["db_object_type"]
-        WholeDbSearch.db_name = request_data["db_name"]
-        extract_result = WholeDbSearch.extract_and_store(is_full=request_data["is_full"],
-                                                         table_name=request_data["table_name"],
-                                                         block_name=request_data["block_name"],
-                                                         block_key=request_data["block_key"]
-                                                         )
-        return {"success": extract_result}, 200
+        extract_result = full_text_index_extract.delay(domain=request_data["domain"],
+                                       db_object_type=request_data["db_object_type"],
+                                       db_name=request_data["db_name"],
+                                       is_full=request_data["is_full"],
+                                       table_name=request_data["table_name"],
+                                       block_name=request_data["block_name"],
+                                       block_key=request_data["block_key"]
+                                       )
+        return extract_result, 200
