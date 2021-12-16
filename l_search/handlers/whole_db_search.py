@@ -278,4 +278,27 @@ class WholeDbSearch:
                                           extract_data_info=extract_data_info)
         return insert_row_count
 
+    @classmethod
+    def search(cls, search_text, block_name=None, block_key=None):
+        search_data = models.FullTextIndex.search_index(domain=cls.domain,
+                                                        db_object_type=cls.db_object_type,
+                                                        search_text=search_text,
+                                                        block_name=block_name,
+                                                        block_key=block_key)
+        search_data_dict_list = []
+        search_text_list = str(search_text).replace("+", "").replace("-", "").split(" ")
+        for row in search_data:
+            row_dict = {"db_name": row.extract_data_info.db_name,
+                        "table_name": row.extract_data_info.table_name,
+                        "row_id": str(row.id).split("-")[1],
+                        "block_name": row.block_name,
+                        "block_key": row.block_key}
 
+            hits = []
+            for hit in str(row.row_content).split("*"):
+                if any(s in hit for s in search_text_list):
+                    hits.append(hit)
+            row_dict["hits"] = hits
+            search_data_dict_list.append(row_dict)
+
+        return search_data_dict_list

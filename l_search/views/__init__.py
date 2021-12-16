@@ -28,7 +28,7 @@ api.add_namespace(api_task, path="/task")
 
 api_task.add_resource(TaskStatus, "/<task_id>", endpoint="task_status")
 
-api_search.add_resource(QueryIndex, "/index", endpoint="query_index")
+api_search.add_resource(QueryIndex, "/<domain>/<db_object_type>", endpoint="query_index")
 
 api_mirror.add_resource(ExtractToFullTextIndexTable, "/data_to_full_index", endpoint="mirror_data")
 
