@@ -240,7 +240,8 @@ class WholeDbSearch:
                                                               db_name=cls.db_name,
                                                               table_name=table_name,
                                                               table_primary_id=extract_sql["table_primary_id"],
-                                                              table_extract_col=extract_sql["table_extract_col"]
+                                                              table_extract_col=extract_sql["table_extract_col"],
+                                                              is_full_text_index=True
                                                               )
 
         extract_data, get_last_date_data = cls.extract_data(execute_sql=extract_sql,

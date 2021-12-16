@@ -9,6 +9,7 @@ from l_search import __title__, __version__
 from .search import api_search, QueryIndex
 from .mirror_data import (api_mirror,
                           ExtractToFullTextIndexTable,
+                          ExtractToEntityInit
                           )
 from .data_meta import (api_meta,
                         ConnectionInfo,
@@ -30,7 +31,13 @@ api_task.add_resource(TaskStatus, "/<task_id>", endpoint="task_status")
 
 api_search.add_resource(QueryIndex, "/<domain>/<db_object_type>", endpoint="query_index")
 
-api_mirror.add_resource(ExtractToFullTextIndexTable, "/data_to_full_index", endpoint="mirror_data")
+api_mirror.add_resource(ExtractToFullTextIndexTable,
+                        "/data_to_full_index/<domain>/<db_object_type>/<db_name>/<table_name>",
+                        endpoint="extract_to_full_text_index_table")
+
+api_mirror.add_resource(ExtractToEntityInit,
+                        "/data_to_table/<domain>/<db_object_type>/<db_name>/<table_name>",
+                        endpoint="extract_to_entity_init")
 
 api_meta.add_resource(ConnectionInfo,
                       "/connections",
@@ -53,11 +60,3 @@ api_meta.add_resource(MetaInfo,
 api_meta.add_resource(MetaInfo,
                       "/table/<domain>/<db_object_type>/<db_name>/<table_name>",
                       endpoint="meta_info")
-
-# Todo
-# 要设计一个通用的表结构
-# 要用一个强规则来应对业务库的更新
-#
-# 要有一个采集策略的逻辑
-# 要有一个定时采集的摸快
-# 要开发喂数据进来的接口

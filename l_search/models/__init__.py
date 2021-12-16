@@ -268,6 +268,8 @@ class ExtractDataInfo(db.Model, InsertObject, TimestampMixin):
     table_name = Column(db.String(500))
     table_primary_id = Column(db.String(150), nullable=True)
     table_extract_col = Column(db.String(150), nullable=True)
+    is_entity = Column(db.Boolean, nullable=True)
+    is_full_text_index = Column(db.Boolean, nullable=True)
     latest_table_primary_id = Column(db.String(150), nullable=True)
     latest_extract_date = Column(db.DateTime(True), nullable=True)
 
@@ -300,6 +302,12 @@ class ExtractDataInfo(db.Model, InsertObject, TimestampMixin):
 
                 if "latest_extract_date" in kwargs and table_data.latest_extract_date != kwargs["latest_extract_date"]:
                     table_data.latest_extract_date = kwargs["latest_extract_date"]
+
+                if "is_entity" in kwargs and table_data.is_entity != kwargs["is_entity"]:
+                    table_data.is_entity = kwargs["is_entity"]
+
+                if "is_full_text_index" in kwargs and table_data.is_full_text_index != kwargs["latest_extract_date"]:
+                    table_data.is_full_text_index = kwargs["is_full_text_index"]
             else:
                 return cls.create(**kwargs)
 

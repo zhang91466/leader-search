@@ -133,4 +133,5 @@ class MetaDetector:
 
     def execute_select_sql(self, sql_text):
         session = self.session.get_session()
-        return models.convert_to_dict(session.execute(sql_text).all())
+        execute_data = session.execute(sql_text).all()
+        return [dict(row) for row in execute_data]
