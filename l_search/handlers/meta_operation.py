@@ -62,8 +62,9 @@ class Meta:
         connection_info = models.DBConnect.get_by_domain(domain=domain,
                                                          type=db_object_type,
                                                          connection_id=connection_id)
-        if isinstance(connection_info, dict):
-            connection_info = change_key_name(connection_info)
+        connection_info = models.convert_to_dict(connection_info)
+        if len(connection_info) == 1:
+            connection_info = change_key_name(connection_info[0])
         else:
             connection_info = [change_key_name(c_data) for c_data in connection_info]
 
@@ -109,7 +110,7 @@ class Meta:
                                                       table_name=table_name,
                                                       is_extract=None)
 
-        column_id_list = [col["id"] for col in table_info]
+        column_id_list = [col.id for col in table_info]
 
         change = 0
         failed_info = ""

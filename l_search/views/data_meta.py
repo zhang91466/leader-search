@@ -69,6 +69,7 @@ class SyncMeta(Resource):
 
 meta_info_schema = {
     "id": fields.Integer(description="列id"),
+    "table_name": fields.String(description="表名"),
     "column_name": fields.String(description="列名"),
     "column_type": fields.String(description="列格式"),
     "column_type_length": fields.String(description="字段长度"),

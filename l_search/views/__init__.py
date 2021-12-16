@@ -15,6 +15,8 @@ from .data_meta import (api_meta,
                         ConnectionInfoCreate,
                         SyncMeta,
                         MetaInfo)
+from .tasks_info import (api_task,
+                         TaskStatus)
 
 api = Api(title=__title__,
           version=__version__, )
@@ -22,6 +24,9 @@ api = Api(title=__title__,
 api.add_namespace(api_search, path="/search")
 api.add_namespace(api_mirror, path="/mirror")
 api.add_namespace(api_meta, path="/meta")
+api.add_namespace(api_task, path="/task")
+
+api_task.add_resource(TaskStatus, "/<task_id>", endpoint="task_status")
 
 api_search.add_resource(QueryIndex, "/index", endpoint="query_index")
 

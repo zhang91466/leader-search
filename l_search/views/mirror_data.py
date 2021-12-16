@@ -31,12 +31,12 @@ class ExtractToFullTextIndexTable(Resource):
     @api_mirror.expect(mirror_data_model)
     def post(self):
         request_data = marshal(api_mirror.payload, mirror_data_model)
-        extract_result = full_text_index_extract.delay(domain=request_data["domain"],
-                                       db_object_type=request_data["db_object_type"],
-                                       db_name=request_data["db_name"],
-                                       is_full=request_data["is_full"],
-                                       table_name=request_data["table_name"],
-                                       block_name=request_data["block_name"],
-                                       block_key=request_data["block_key"]
-                                       )
-        return extract_result, 200
+        task = full_text_index_extract.delay(domain=request_data["domain"],
+                                             db_object_type=request_data["db_object_type"],
+                                             db_name=request_data["db_name"],
+                                             is_full=request_data["is_full"],
+                                             table_name=request_data["table_name"],
+                                             block_name=request_data["block_name"],
+                                             block_key=request_data["block_key"]
+                                             )
+        return {"task_id": task.id}, 202

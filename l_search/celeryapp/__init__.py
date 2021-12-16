@@ -1,8 +1,8 @@
 # -*- coding: UTF-8 -*-
 """
-@time:12/15/2021
+@time:12/16/2021
 @author:
-@file:celery_app
+@file:__init__.py
 """
 import ssl
 import sys
@@ -31,6 +31,7 @@ def create_celery_app(_app=None):
 
     celery = Celery(_app.import_name,
                     broker=_app.config["CELERY_BROKER_URL"],
+                    backend=_app.config['CELERY_RESULT_BACKEND'],
                     include=CELERY_TASK_LIST)
     celery.conf.update(_app.config)
     always_eager = _app.config['TESTING'] or False

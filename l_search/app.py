@@ -8,7 +8,7 @@ from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
 from celery import Celery
 from . import settings
-from .tasks import celery_app
+from . import celeryapp
 
 
 
@@ -23,20 +23,17 @@ class LSearch(Flask):
 
 def create_app():
     from .models.base import db
-    from .interface import api
     from . import migrate
-
-
-
     app = LSearch()
-
 
     db.init_app(app)
     migrate.init_app(app, db)
-    api.init_app(app)
 
-    celery = celery_app.create_celery_app(app)
-    celery_app.celery = celery
+    celery = celeryapp.create_celery_app(app)
+    celeryapp.celery = celery
+
+    from .views import api
+    api.init_app(app)
 
     return app
 

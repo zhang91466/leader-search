@@ -21,7 +21,9 @@ def convert_to_dict(sqlalchemy_data):
     """
     result = []
     for row in sqlalchemy_data:
-        result.append(dict(zip(row.keys(), row)))
+        row_dict = row.__dict__
+        row_dict.pop("_sa_instance_state")
+        result.append(row_dict)
     return result
 
 
@@ -130,12 +132,12 @@ class DBMetadata(db.Model, InsertObject, TimestampMixin):
     column_name = Column(db.String(255))
     column_type = Column(db.String(255))
     column_type_length = Column(db.String(255))
-    column_comment = Column(db.String(255))
+    column_comment = Column(db.String(255), nullable=True)
     column_position = Column(db.Integer)
     is_extract = Column(db.Integer, default=1)
     is_primary = Column(db.Integer, default=0)
     is_extract_filter = Column(db.Integer, default=0)
-    filter_default = Column(db.String(255))
+    filter_default = Column(db.String(255), nullable=True)
 
     @classmethod
     def get_tables(cls, domain, type, **kwargs):
@@ -148,13 +150,13 @@ class DBMetadata(db.Model, InsertObject, TimestampMixin):
         :return:sql query
         """
 
-        meta_query = cls.query(cls.domain,
-                               cls.type,
-                               cls.default_db,
-                               cls.table_name
-                               ).filter(and_(cls.domain == domain,
-                                             cls.type == type
-                                             ))
+        meta_query = db.session.query(cls.domain,
+                                      cls.type,
+                                      cls.default_db,
+                                      cls.table_name
+                                      ).filter(and_(cls.domain == domain,
+                                                    cls.type == type
+                                                    ))
 
         if "default_db" in kwargs and "table_name_list" in kwargs and kwargs["db_name"] is not None and kwargs[
             "table_name_list"] is not None:
@@ -186,22 +188,11 @@ class DBMetadata(db.Model, InsertObject, TimestampMixin):
 
     @classmethod
     def get_table_info(cls, domain, type, default_db, table_name, **kwargs):
-        meta_query = cls.query(cls.id,
-                               cls.default_db,
-                               cls.table_name,
-                               cls.column_name,
-                               cls.column_type,
-                               cls.column_type_length,
-                               cls.column_comment,
-                               cls.is_primary,
-                               cls.is_extract,
-                               cls.is_extract_filter,
-                               cls.filter_default
-                               ).filter(and_(cls.domain == domain,
-                                             cls.type == type,
-                                             cls.default_db == default_db,
-                                             cls.table_name == table_name
-                                             ))
+        meta_query = cls.query.filter(and_(cls.domain == domain,
+                                           cls.type == type,
+                                           cls.default_db == default_db,
+                                           cls.table_name == table_name
+                                           ))
 
         if "is_extract" in kwargs and kwargs["is_extract"] is not None:
             meta_query = meta_query.filter(cls.is_extract == kwargs["is_extract"]).order_by(cls.column_position)

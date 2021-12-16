@@ -6,8 +6,7 @@
 """
 from l_search.utils.logger import Logger
 from l_search import models
-from DWMM.operate.metadata_info import MetadataOperate
-from DWMM.source_meta_operate.handle.meta_handle import MetaDetector
+from l_search.handlers.source_meta_operate.handle.meta_handle import MetaDetector
 import hashlib
 import pandas as pd
 
@@ -40,35 +39,36 @@ class WholeDbSearch:
         """
         string_column_type = ["varchar", "string", "text", "char"]
 
-        operate = MetadataOperate(subject_domain=cls.domain, object_type=models.DBObjectType[cls.db_object_type].value)
+        table_schema = models.DBMetadata.get_table_info(domain=cls.domain,
+                                                        type=models.DBObjectType[cls.db_object_type].value,
+                                                        default_db=cls.db_name,
+                                                        table_name=table_name,
+                                                        is_extract=None
+                                                        )
 
-        table_schema = operate.get_table_info(db_name=cls.db_name,
-                                              table_name=table_name,
-                                              is_extract=None
-                                              )
         select_case_str = ""
         concat_str = ""
         primary_col_type_is_int = True
         for col in table_schema:
 
-            if col["is_primary"] == 1:
-                primary_column_name = col["column_name"]
+            if col.is_primary == 1:
+                primary_column_name = col.column_name
 
-                if col["column_type"] in string_column_type:
+                if col.column_type in string_column_type:
                     primary_col_type_is_int = False
                 continue
 
-            if col["is_extract_filter"] == 1:
-                extract_column_name = col["column_name"]
+            if col.is_extract_filter == 1:
+                extract_column_name = col.column_name
 
-            if col["column_type"].lower() in string_column_type \
-                    and "geo" not in col["column_name"] \
-                    and col["is_extract"] == 1:
+            if col.column_type.lower() in string_column_type \
+                    and "geo" not in col.column_name \
+                    and col.is_extract == 1:
                 select_case_str = select_case_str + """
                 ,case when %(column_name)s is null then '*' else concat(%(column_name)s, '*') end as %(column_name)s """ % {
-                    "column_name": col["column_name"]}
+                    "column_name": col.column_name}
 
-                concat_str = concat_str + "%s, " % col["column_name"]
+                concat_str = concat_str + "%s, " % col.column_name
 
         concat_str = concat_str.strip()[:-1]
 
@@ -125,12 +125,14 @@ class WholeDbSearch:
 
         else:
             if primary_column_name is None:
-                logger.info("(%s.%s.%s) 表主键不明确，无法生成抽取sql" % (cls.domain, cls.db_name, table_name))
+                failed_info = "(%s.%s.%s) 表主键不明确，无法生成抽取sql" % (cls.domain, cls.db_name, table_name)
+                logger.info(failed_info)
 
             if extract_column_name is None:
-                logger.info("(%s.%s.%s) 表抽取列不明确，无法生成抽取sql" % (cls.domain, cls.db_name, table_name))
+                failed_info = "(%s.%s.%s) 表抽取列不明确，无法生成抽取sql" % (cls.domain, cls.db_name, table_name)
+                logger.info(failed_info)
 
-            return None
+            return failed_info
 
     @classmethod
     def extract_data(cls,
@@ -147,8 +149,8 @@ class WholeDbSearch:
         :return: 抽取的数据
         """
 
-        meta_detector = MetaDetector(subject_domain=cls.domain,
-                                     object_type=models.DBObjectType[cls.db_object_type].value)
+        meta_detector = MetaDetector(domain=cls.domain,
+                                     type=models.DBObjectType[cls.db_object_type].value)
 
         sql_text = """
         %(select)s
@@ -227,6 +229,10 @@ class WholeDbSearch:
 
         extract_sql = cls.create_extract_table_sql_to_full_index(table_name=table_name,
                                                                  where_stat=where_stat)
+
+        # 如果是string说明生成sql的时候存在问题故返回错误信息
+        if isinstance(extract_sql, str):
+            return extract_sql
 
         if extract_data_info is None:
             extract_data_info = models.ExtractDataInfo.create(domain=cls.domain,
