@@ -6,7 +6,7 @@
 """
 from flask_restx import Namespace, Resource, fields, marshal
 from l_search.handlers.meta_operation import Meta
-from l_search.handlers.source_meta_operate.handle.meta_handle import MetaDetector
+from l_search.tasks import sync_table_meta
 from l_search import models
 
 api_meta = Namespace('data_meta', description='Source data metabase')
@@ -29,6 +29,10 @@ class ConnectionInfoCreate(Resource):
 
     @api_meta.expect(connection_info_model)
     def post(self):
+        """
+        目标库链接信息创建
+        :return:
+        """
         request_data = marshal(api_meta.payload, connection_info_model)
         add_result = Meta.add_connection_info(request_data)
         return add_result, 200
@@ -38,6 +42,13 @@ class ConnectionInfo(Resource):
 
     @api_meta.marshal_with(connection_info_model)
     def get(self, connection_id=None, domain=None, db_object_type=None):
+        """
+        目标库链接信息获取
+        :param connection_id:
+        :param domain:
+        :param db_object_type:
+        :return:
+        """
         connection_info = Meta.get_connection_info(connection_id=connection_id,
                                                    domain=domain,
                                                    db_object_type=db_object_type)
@@ -58,13 +69,18 @@ class SyncMeta(Resource):
 
     @api_meta.expect(sync_meta_model)
     def post(self):
+        """
+        异步 -- 同步目标库表结构信息
+        :return:
+        """
         request_data = marshal(api_meta.payload, sync_meta_model)
 
-        meta_detector = MetaDetector(domain=request_data["domain"],
-                                     type=models.DBObjectType[request_data["db_object_type"]].value)
-        schema_info = meta_detector.detector_schema(tables=request_data["table_list"],
-                                                    table_name_prefix=request_data["table_name_prefix"])
-        return schema_info, 200
+        task = sync_table_meta.delay(domain=request_data["domain"],
+                                     db_object_type=models.DBObjectType[request_data["db_object_type"]].value,
+                                     table_list=request_data["table_list"],
+                                     table_name_prefix=request_data["table_name_prefix"]
+                                     )
+        return {"task_id": task.id}, 200
 
 
 meta_info_schema = {
@@ -100,6 +116,14 @@ class MetaInfo(Resource):
 
     @api_meta.marshal_with(meta_info_list_model)
     def get(self, domain, db_object_type, db_name, table_name=None):
+        """
+        已收集的目标库表结构信息获取
+        :param domain:
+        :param db_object_type:
+        :param db_name:
+        :param table_name:
+        :return:
+        """
         Meta.domain = domain
         Meta.db_object_type = db_object_type
         get_result = Meta.get_table_meta(default_db=db_name, table_name=table_name)
@@ -108,6 +132,14 @@ class MetaInfo(Resource):
 
     @api_meta.expect(meta_info_modify_model)
     def post(self, domain, db_object_type, db_name, table_name):
+        """
+        已收集的目标库表结构信息修改
+        :param domain:
+        :param db_object_type:
+        :param db_name:
+        :param table_name:
+        :return:
+        """
         request_data = marshal(api_meta.payload, meta_info_modify_model)
         Meta.domain = domain
         Meta.db_object_type = db_object_type

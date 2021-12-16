@@ -30,6 +30,10 @@ class ExtractToFullTextIndexTable(Resource):
 
     @api_mirror.expect(mirror_data_model)
     def post(self):
+        """
+        异步 -- 抽取目标数据至全文检索数据库
+        :return:
+        """
         request_data = marshal(api_mirror.payload, mirror_data_model)
         task = full_text_index_extract.delay(domain=request_data["domain"],
                                              db_object_type=request_data["db_object_type"],

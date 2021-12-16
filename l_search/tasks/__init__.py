@@ -21,3 +21,13 @@ def full_text_index_extract(domain, db_object_type, db_name, is_full, table_name
                                                      block_key=block_key
                                                      )
     return {"extract_data": extract_result}
+
+
+@celery.task()
+def sync_table_meta(domain, db_object_type, table_list=None, table_name_prefix=None):
+    from l_search.handlers.source_meta_operate.handle.meta_handle import MetaDetector
+    meta_detector = MetaDetector(domain=domain,
+                                 type=db_object_type)
+    schema_info = meta_detector.detector_schema(tables=table_list,
+                                                table_name_prefix=table_name_prefix)
+    return schema_info

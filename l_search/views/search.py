@@ -38,7 +38,7 @@ class QueryIndex(Resource):
     @api_search.marshal_with(query_index_output)
     def post(self, domain, db_object_type):
         """
-
+        全文检索
         :param domain:
         :param db_object_type: mysql,postgres
         :return:

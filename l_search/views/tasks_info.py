@@ -13,6 +13,11 @@ api_task = Namespace('task_info', description='Get task info from celery')
 class TaskStatus(Resource):
 
     def get(self, task_id):
+        """
+        从调度获取任务执行情况
+        :param task_id:
+        :return:
+        """
         task_result = celeryapp.celery.AsyncResult(task_id)
         result = {
             "task_id": task_id,
