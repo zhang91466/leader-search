@@ -7,11 +7,13 @@
 from l_search.utils.logger import Logger
 from l_search import models
 from l_search.handlers.source_meta_operate.handle.meta_handle import MetaDetector
+from l_search import settings
 import hashlib
 import pandas as pd
 
 logger = Logger()
 
+STRING_COLUMN_TYPE = settings.STRING_COLUMN_TYPE
 
 class WholeDbSearch:
     domain = ""
@@ -37,7 +39,7 @@ class WholeDbSearch:
         :param where_stat: 抽取where条件
         :return: dict {select:select column sql, from: from table sql, latest_date: 获取最终抽取时间与最大主键id}
         """
-        string_column_type = ["varchar", "string", "text", "char"]
+
 
         table_schema = models.DBMetadata.get_table_info(domain=cls.domain,
                                                         type=models.DBObjectType[cls.db_object_type].value,
@@ -54,14 +56,14 @@ class WholeDbSearch:
             if col.is_primary == 1:
                 primary_column_name = col.column_name
 
-                if col.column_type in string_column_type:
+                if col.column_type in STRING_COLUMN_TYPE:
                     primary_col_type_is_int = False
                 continue
 
             if col.is_extract_filter == 1:
                 extract_column_name = col.column_name
 
-            if col.column_type.lower() in string_column_type \
+            if col.column_type.lower() in STRING_COLUMN_TYPE \
                     and "geo" not in col.column_name \
                     and col.is_extract == 1:
                 select_case_str = select_case_str + """
@@ -95,6 +97,7 @@ class WholeDbSearch:
                 %(where_stat)s
             ) t1
             """ % {"table_primary_id": primary_column_name,
+                   "table_primary_id_is_int": primary_col_type_is_int,
                    "case_col": select_case_str,
                    "table_name": table_name,
                    "where_stat": where_stat}
@@ -240,6 +243,7 @@ class WholeDbSearch:
                                                               db_name=cls.db_name,
                                                               table_name=table_name,
                                                               table_primary_id=extract_sql["table_primary_id"],
+                                                              table_primary_id_is_int=extract_sql["table_primary_id_is_int"],
                                                               table_extract_col=extract_sql["table_extract_col"],
                                                               is_full_text_index=True
                                                               )

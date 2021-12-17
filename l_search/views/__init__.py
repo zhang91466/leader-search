@@ -9,7 +9,10 @@ from l_search import __title__, __version__
 from .search import api_search, QueryIndex
 from .mirror_data import (api_mirror,
                           ExtractToFullTextIndexTable,
-                          ExtractToEntityInit
+                          ExtractToEntityInit,
+                          ExtractToEntityUpsert,
+                          ExtractToEntityDataGet,
+                          ExtractToEntityDrop
                           )
 from .data_meta import (api_meta,
                         ConnectionInfo,
@@ -36,8 +39,20 @@ api_mirror.add_resource(ExtractToFullTextIndexTable,
                         endpoint="extract_to_full_text_index_table")
 
 api_mirror.add_resource(ExtractToEntityInit,
-                        "/data_to_table/<domain>/<db_object_type>/<db_name>/<table_name>",
+                        "/data_to_table/<domain>/<db_object_type>/<db_name>/<table_name>/init",
                         endpoint="extract_to_entity_init")
+
+api_mirror.add_resource(ExtractToEntityUpsert,
+                        "/data_to_table/<domain>/<db_object_type>/<db_name>/<table_name>/upsert",
+                        endpoint="extract_to_entity_upsert")
+
+api_mirror.add_resource(ExtractToEntityDataGet,
+                        "/data_to_table/<domain>/<db_object_type>/<db_name>/<table_name>/get",
+                        endpoint="extract_to_entity_get")
+
+api_mirror.add_resource(ExtractToEntityDrop,
+                        "/data_to_table/<domain>/<db_object_type>/<db_name>/<table_name>",
+                        endpoint="extract_to_entity_drop")
 
 api_meta.add_resource(ConnectionInfo,
                       "/connections",

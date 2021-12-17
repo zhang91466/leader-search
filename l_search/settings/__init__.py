@@ -13,3 +13,5 @@ SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 CELERY_BROKER_URL = "redis://localhost:6379/2"
 CELERY_RESULT_BACKEND = "redis://localhost:6379/2"
+
+STRING_COLUMN_TYPE = ["varchar", "string", "text", "char"]

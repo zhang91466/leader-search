@@ -46,17 +46,74 @@ class ExtractToFullTextIndexTable(Resource):
 
 
 entity_data_schema = {
-    "is_entity": fields.Boolean(description="是否是克隆", default=False)
+    "need_drop": fields.Boolean(description="是否强制删除已存在的表结构", default=False)
 }
 
 entity_data_model = api_mirror.model("entity_data_schema", entity_data_schema)
+
 
 class ExtractToEntityInit(Resource):
 
     @api_mirror.expect(entity_data_model)
     def post(self, domain, db_object_type, db_name, table_name):
+        """
+        通过schema生成实体表
+        :param domain:
+        :param db_object_type:
+        :param db_name:
+        :param table_name:
+        :return:
+        """
         request_data = marshal(api_mirror.payload, entity_data_model)
         ExtractData.domain = domain
         ExtractData.db_object_type = db_object_type
         ExtractData.db_name = db_name
-        ExtractData.init(table_name=table_name, need_drop=request_data["is_entity"])
+        ExtractData.init(table_name=table_name, need_drop=request_data["need_drop"])
+
+
+class ExtractToEntityUpsert(Resource):
+
+    def post(self, domain, db_object_type, db_name, table_name):
+        """
+        对实体表进行数据更新
+        :param domain:
+        :param db_object_type:
+        :param db_name:
+        :param table_name:
+        :return:
+        """
+        ExtractData.domain = domain
+        ExtractData.db_object_type = db_object_type
+        ExtractData.db_name = db_name
+        ExtractData.upsert(table_name=table_name)
+
+
+entity_data_get_schema = {
+    "column_list": fields.List(fields.String(description="select 的列合集")),
+    "where_stat": fields.String(description="where 条件 (不需要包含where这个词)"),
+}
+
+entity_data_get_model = api_mirror.model("entity_data_get_schema", entity_data_get_schema)
+
+
+class ExtractToEntityDataGet(Resource):
+
+    @api_mirror.expect(entity_data_get_model)
+    def post(self, domain, db_object_type, db_name, table_name):
+        request_data = marshal(api_mirror.payload, entity_data_get_model)
+        ExtractData.domain = domain
+        ExtractData.db_object_type = db_object_type
+        ExtractData.db_name = db_name
+        get_data = ExtractData.get(table_name=table_name,
+                                   column_list=request_data["column_list"],
+                                   where_stat=request_data["where_stat"])
+        return get_data
+
+
+class ExtractToEntityDrop(Resource):
+
+    def delete(self, domain, db_object_type, db_name, table_name):
+        ExtractData.domain = domain
+        ExtractData.db_object_type = db_object_type
+        ExtractData.db_name = db_name
+        ExtractData.drop(table_name=table_name)

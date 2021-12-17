@@ -29,7 +29,7 @@ def upgrade():
     sa.Column('table_primary_id', sa.String(length=150), nullable=True),
     sa.Column('table_extract_col', sa.String(length=150), nullable=True),
     sa.Column('latest_table_primary_id', sa.String(length=150), nullable=True),
-    sa.Column('latest_extract_date', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('latest_extract_date', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('full_text_index',

@@ -267,11 +267,12 @@ class ExtractDataInfo(db.Model, InsertObject, TimestampMixin):
     db_name = Column(db.String(500))
     table_name = Column(db.String(500))
     table_primary_id = Column(db.String(150), nullable=True)
+    table_primary_id_is_int = Column(db.Boolean, default=True)
     table_extract_col = Column(db.String(150), nullable=True)
-    is_entity = Column(db.Boolean, nullable=True)
-    is_full_text_index = Column(db.Boolean, nullable=True)
+    is_entity = Column(db.Boolean, default=False)
+    is_full_text_index = Column(db.Boolean, default=False)
     latest_table_primary_id = Column(db.String(150), nullable=True)
-    latest_extract_date = Column(db.DateTime(True), nullable=True)
+    latest_extract_date = Column(db.DateTime(), nullable=True)
 
     @classmethod
     def get_by_table_name(cls, domain, db_object_type, db_name, table_name):
@@ -289,9 +290,13 @@ class ExtractDataInfo(db.Model, InsertObject, TimestampMixin):
                                                db_object_type=kwargs["db_object_type"],
                                                db_name=kwargs["db_name"],
                                                table_name=kwargs["table_name"])
+
             if table_data:
                 if "table_primary_id" in kwargs and table_data.table_primary_id != kwargs["table_primary_id"]:
                     table_data.table_primary_id = kwargs["table_primary_id"]
+
+                if "table_primary_id_is_int" in kwargs and table_data.table_primary_id_is_int != kwargs["table_primary_id_is_int"]:
+                    table_data.table_primary_id_is_int = kwargs["table_primary_id_is_int"]
 
                 if "table_extract_col" in kwargs and table_data.table_extract_col != kwargs["table_extract_col"]:
                     table_data.table_extract_col = kwargs["table_extract_col"]
