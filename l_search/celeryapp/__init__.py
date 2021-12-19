@@ -37,6 +37,10 @@ def create_celery_app(_app=None):
     always_eager = _app.config['TESTING'] or False
     celery.conf.update({'CELERY_ALWAYS_EAGER': always_eager,
                         'CELERY_RESULT_BACKEND': f"db+{_app.config['SQLALCHEMY_DATABASE_URI']}"})
+    celery.conf.CELERYD_TASK_SOFT_TIME_LIMIT = 300
+    # celery.conf.CELERY_RESULT_SERIALIZER = 'pickle'
+    # celery.conf.CELERY_TASK_SERIALIZER = 'pickle'
+    # celery.conf.CELERY_ACCEPT_CONTENT = ['json', 'pickle']
     # if _app.config['CELERY_REDIS_USE_SSL']:
     #     broker_use_ssl = {'ssl_cert_reqs': ssl.CERT_NONE}
     #     celery.conf.update({'BROKER_USE_SSL': broker_use_ssl})

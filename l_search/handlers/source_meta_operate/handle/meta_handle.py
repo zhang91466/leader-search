@@ -104,6 +104,8 @@ class MetaDetector:
         else:
             is_all = False
 
+        result = {}
+
         for t in list_tables:
             if is_all:
                 column_info_list = detector_table()
@@ -115,10 +117,12 @@ class MetaDetector:
 
             if len(column_info_list) > 0:
                 logger.info("Got %s's meta" % t)
-                Meta.add_table_info(column_info_list)
+                update_num = Meta.add_table_info(column_info_list)
                 column_info_list = []
 
-        return table_list
+                result[list_tables[t].name] = update_num
+
+        return result
 
     def check_meta(self):
         """

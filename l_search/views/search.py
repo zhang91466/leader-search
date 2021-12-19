@@ -10,12 +10,18 @@ from l_search.handlers.whole_db_search import WholeDbSearch
 api_search = Namespace("search", description="Search data with full text index")
 
 query_index_input_schema = {
-    # "domain": fields.String(description="系统域"),
-    # "db_object_type": fields.String(description="数据库类型", enum=models.DBObjectType._member_names_),
     "block_name": fields.String(description="业务标签分组名称"),
     "block_key": fields.String(description="业务标签"),
-    "search_text": fields.String(description="""检索方法:  + stands for AND - stands for NOT
-                       detail:https://dev.mysql.com/doc/refman/8.0/en/fulltext-boolean.html"""),
+    "search_text": fields.String(description="""
+    搜索语法规则：
+     +   一定要有(不含有该关键词的数据条均被忽略)。 
+     -   不可以有(排除指定关键词，含有该关键词的均被忽略)。 
+     >   提高该条匹配数据的权重值。 
+     <   降低该条匹配数据的权重值。
+     ~   将其相关性由正转负，表示拥有该字会降低相关性(但不像-将之排除)，只是排在较后面权重值降低。 
+     *   万用字，不像其他语法放在前面，这个要接在字符串后面。 
+     " " 用双引号将一段句子包起来表示要完全相符，不可拆字。
+     detail:https://dev.mysql.com/doc/refman/8.0/en/fulltext-boolean.html"""),
 }
 
 query_index_input = api_search.model('query_index_request_schema', query_index_input_schema)

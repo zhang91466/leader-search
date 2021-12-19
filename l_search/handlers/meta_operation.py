@@ -149,8 +149,24 @@ class Meta:
 
         check_keys = list(set(required_keys) - set(input_meta_keys))
 
+        update_num = 0
         # 确保key都存在
         if len(check_keys) == 0:
+
+            get_table_info = models.DBMetadata.get_table_info(domain=cls.domain,
+                                                              type=cls.db_object_type,
+                                                              default_db=input_meta[0]["default_db"],
+                                                              table_name=input_meta[0]["table_name"])
+            check = False
+            if len(get_table_info) > len(input_meta):
+                failed_info = "同步表信息（%s）数据库中记录的列多于更新的列，无法更新" % input_meta[0]["table_name"]
+                logger.info(failed_info)
+                return failed_info
+            elif len(get_table_info) < len(input_meta) and len(get_table_info) != 0:
+                input_meta = input_meta[len(get_table_info) - 1:]
+                check = True
+            elif len(get_table_info) == len(input_meta):
+                input_meta = []
 
             for items in input_meta:
 
@@ -173,4 +189,16 @@ class Meta:
 
                 items.update(update_dict)
 
-                models.DBMetadata.create(**items)
+                get_column_info = None
+                if check:
+                    get_column_info = models.DBMetadata.get_table_info(domain=cls.domain,
+                                                                       type=cls.db_object_type,
+                                                                       default_db=items["default_db"],
+                                                                       table_name=items["table_name"],
+                                                                       column_name=items["column_name"])
+
+                if get_column_info is None:
+                    models.DBMetadata.create(**items)
+                    update_num = update_num + 1
+
+        return str(update_num)

@@ -194,6 +194,9 @@ class DBMetadata(db.Model, InsertObject, TimestampMixin):
                                            cls.table_name == table_name
                                            ))
 
+        if "column_name" in kwargs and kwargs["column_name"] is not None:
+            meta_query = meta_query.filter(cls.column_name == kwargs["column_name"])
+
         if "is_extract" in kwargs and kwargs["is_extract"] is not None:
             meta_query = meta_query.filter(cls.is_extract == kwargs["is_extract"]).order_by(cls.column_position)
 
@@ -215,6 +218,7 @@ class DBMetadata(db.Model, InsertObject, TimestampMixin):
                                           cls.is_extract_filter == 1
                                           )).update({"filter_default": filter_value})
         db.session.commit()
+
 
     @classmethod
     def modify(cls, column_id, input_data):
@@ -295,7 +299,8 @@ class ExtractDataInfo(db.Model, InsertObject, TimestampMixin):
                 if "table_primary_id" in kwargs and table_data.table_primary_id != kwargs["table_primary_id"]:
                     table_data.table_primary_id = kwargs["table_primary_id"]
 
-                if "table_primary_id_is_int" in kwargs and table_data.table_primary_id_is_int != kwargs["table_primary_id_is_int"]:
+                if "table_primary_id_is_int" in kwargs and table_data.table_primary_id_is_int != kwargs[
+                    "table_primary_id_is_int"]:
                     table_data.table_primary_id_is_int = kwargs["table_primary_id_is_int"]
 
                 if "table_extract_col" in kwargs and table_data.table_extract_col != kwargs["table_extract_col"]:

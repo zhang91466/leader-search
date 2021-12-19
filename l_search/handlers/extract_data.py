@@ -224,11 +224,15 @@ class ExtractData:
                                                                          table_name=table_name)
         table_name_in_db = cls.get_table_name_in_db(table_name=table_name,
                                                     extract_data_info=extract_data_info)
-        TableOperate.drop_table(table_name=table_name_in_db)
-        extract_data_info.is_entity = False
-        extract_data_info.latest_table_primary_id = None
-        extract_data_info.latest_extract_date = None
-        models.ExtractDataInfo.upsert(table_data=extract_data_info)
+        try:
+            TableOperate.drop_table(table_name=table_name_in_db)
+            extract_data_info.is_entity = False
+            extract_data_info.latest_table_primary_id = None
+            extract_data_info.latest_extract_date = None
+            models.ExtractDataInfo.upsert(table_data=extract_data_info)
+        except Exception as e:
+            return e
+
 
     @classmethod
     def init(cls, table_name, need_drop=False):

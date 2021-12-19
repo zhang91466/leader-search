@@ -5,7 +5,9 @@
 @file:mirror_data
 """
 from flask_restx import Namespace, Resource, fields, marshal
-from l_search.tasks import full_text_index_extract
+from l_search.tasks import (full_text_index_extract,
+                            table_extract_init,
+                            table_extract_upsert)
 from l_search.handlers.extract_data import ExtractData
 
 api_mirror = Namespace('mirror_data', description='Extract data from source')
@@ -57,7 +59,7 @@ class ExtractToEntityInit(Resource):
     @api_mirror.expect(entity_data_model)
     def post(self, domain, db_object_type, db_name, table_name):
         """
-        通过schema生成实体表
+        异步 -- 通过schema生成实体表
         :param domain:
         :param db_object_type:
         :param db_name:
@@ -65,27 +67,30 @@ class ExtractToEntityInit(Resource):
         :return:
         """
         request_data = marshal(api_mirror.payload, entity_data_model)
-        ExtractData.domain = domain
-        ExtractData.db_object_type = db_object_type
-        ExtractData.db_name = db_name
-        ExtractData.init(table_name=table_name, need_drop=request_data["need_drop"])
+        task = table_extract_init(domain=domain,
+                                  db_object_type=db_object_type,
+                                  db_name=db_name,
+                                  table_name=table_name,
+                                  need_drop=request_data["need_drop"])
+        return {"task_id": task.id}, 202
 
 
 class ExtractToEntityUpsert(Resource):
 
     def post(self, domain, db_object_type, db_name, table_name):
         """
-        对实体表进行数据更新
+        异步 -- 对实体表进行数据更新
         :param domain:
         :param db_object_type:
         :param db_name:
         :param table_name:
         :return:
         """
-        ExtractData.domain = domain
-        ExtractData.db_object_type = db_object_type
-        ExtractData.db_name = db_name
-        ExtractData.upsert(table_name=table_name)
+        task = table_extract_upsert(domain=domain,
+                                    db_object_type=db_object_type,
+                                    db_name=db_name,
+                                    table_name=table_name)
+        return {"task_id": task.id}, 202
 
 
 entity_data_get_schema = {
@@ -116,4 +121,8 @@ class ExtractToEntityDrop(Resource):
         ExtractData.domain = domain
         ExtractData.db_object_type = db_object_type
         ExtractData.db_name = db_name
-        ExtractData.drop(table_name=table_name)
+        drop_result = ExtractData.drop(table_name=table_name)
+        if drop_result:
+            return {"status": "failed",
+                    "info": drop_result}
+        return {"status": "success"}
