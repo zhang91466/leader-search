@@ -11,6 +11,7 @@ from l_search.models.extract_table_models import TableOperate, DONOT_CREATE_COLU
 from l_search.handlers.source_meta_operate.handle.meta_handle import MetaDetector
 from l_search import settings
 from l_search.utils.logger import Logger
+from l_search.utils import json_converter
 import pandas as pd
 import simplejson as json
 
@@ -309,27 +310,33 @@ class ExtractData:
                                                                      table_name=table_name)
 
         if extract_data_info.is_entity:
-            table_schema = models.DBMetadata.get_table_info(domain=cls.domain,
-                                                            type=models.DBObjectType[cls.db_object_type].value,
-                                                            default_db=cls.db_name,
-                                                            table_name=table_name,
-                                                            is_extract=True)
 
-            column_name_in_order_list = [column_info.column_name for column_info in table_schema if
-                                         column_info.column_name not in DONOT_CREATE_COLUMN]
+            if column_list:
+                table_schema = models.DBMetadata.get_table_info(domain=cls.domain,
+                                                                type=models.DBObjectType[cls.db_object_type].value,
+                                                                default_db=cls.db_name,
+                                                                table_name=table_name,
+                                                                is_extract=True)
 
-            need_remove_col = []
-            for index in range(len(column_list)):
-                if column_list[index] not in column_name_in_order_list:
-                    need_remove_col.append(column_list[index])
-            column_list = list(set(column_list) - set(need_remove_col))
+                column_name_in_order_list = [column_info.column_name for column_info in table_schema if
+                                             column_info.column_name not in DONOT_CREATE_COLUMN]
+
+                need_remove_col = []
+
+                for index in range(len(column_list)):
+                    if column_list[index] not in column_name_in_order_list:
+                        need_remove_col.append(column_list[index])
+                column_list = list(set(column_list) - set(need_remove_col))
 
             select_data = TableOperate.select(table_name=cls.get_table_name_in_db(table_name=table_name,
                                                                                   extract_data_info=extract_data_info),
                                               column_list=column_list,
                                               where_stat=where_stat)
-            return json.loads(json.dumps({"status": "success",
-                               "data": select_data}, use_decimal=True))
+            select_data_df = pd.DataFrame(select_data)
+            all_columns = list(select_data_df)  # Creates list of all column headers
+            select_data_df[all_columns] = select_data_df[all_columns].astype(str)
+            return {"status": "success",
+                    "data": select_data_df.T.to_dict()}
 
         else:
             return {"status": "failed",

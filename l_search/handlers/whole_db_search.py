@@ -15,6 +15,7 @@ logger = Logger()
 
 STRING_COLUMN_TYPE = settings.STRING_COLUMN_TYPE
 
+
 class WholeDbSearch:
     domain = ""
     db_object_type = ""
@@ -39,7 +40,6 @@ class WholeDbSearch:
         :param where_stat: 抽取where条件
         :return: dict {select:select column sql, from: from table sql, latest_date: 获取最终抽取时间与最大主键id}
         """
-
 
         table_schema = models.DBMetadata.get_table_info(domain=cls.domain,
                                                         type=models.DBObjectType[cls.db_object_type].value,
@@ -224,7 +224,7 @@ class WholeDbSearch:
 
         where_stat = ""
         # 增量抽取
-        if is_full == 0 and extract_data_info is not None:
+        if is_full == False and extract_data_info is not None:
             where_stat = """
                         where %(latest_extract_date)s > '%(latest_extract_date_value)s'
                          """ % {"latest_extract_date": extract_data_info.table_extract_col,
@@ -243,7 +243,8 @@ class WholeDbSearch:
                                                               db_name=cls.db_name,
                                                               table_name=table_name,
                                                               table_primary_id=extract_sql["table_primary_id"],
-                                                              table_primary_id_is_int=extract_sql["table_primary_id_is_int"],
+                                                              table_primary_id_is_int=extract_sql[
+                                                                  "primary_col_type_is_int"],
                                                               table_extract_col=extract_sql["table_extract_col"],
                                                               is_full_text_index=True
                                                               )
@@ -255,7 +256,7 @@ class WholeDbSearch:
 
         # 处理已经存在的数据
         # 全量
-        if is_full == 1:
+        if is_full:
             models.FullTextIndex.delete_data(extract_data_info_id=extract_data_info.id)
         # 增量
         else:

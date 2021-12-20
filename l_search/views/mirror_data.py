@@ -15,7 +15,7 @@ api_mirror = Namespace('mirror_data', description='Extract data from source')
 mirror_data_schema = {
     "block_name": fields.String(description="业务标签分组名称"),
     "block_key": fields.String(description="业务标签"),
-    "is_full": fields.Integer(description="是否全量抽取", enum=[0, 1])
+    "is_full": fields.Boolean(description="是否全量抽取", default=True)
 }
 
 mirror_data_model = api_mirror.model("mirror_data", mirror_data_schema)
@@ -67,7 +67,7 @@ class ExtractToEntityInit(Resource):
         :return:
         """
         request_data = marshal(api_mirror.payload, entity_data_model)
-        task = table_extract_init(domain=domain,
+        task = table_extract_init.delay(domain=domain,
                                   db_object_type=db_object_type,
                                   db_name=db_name,
                                   table_name=table_name,
@@ -86,7 +86,7 @@ class ExtractToEntityUpsert(Resource):
         :param table_name:
         :return:
         """
-        task = table_extract_upsert(domain=domain,
+        task = table_extract_upsert.delay(domain=domain,
                                     db_object_type=db_object_type,
                                     db_name=db_name,
                                     table_name=table_name)
