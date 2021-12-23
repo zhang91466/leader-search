@@ -13,12 +13,15 @@ logger = Logger()
 
 
 class MetaDetector:
-    def __init__(self, domain, type, db_schema=None):
+    def __init__(self, domain, type, db_name, db_schema=None):
         self.domain = domain
         self.domain_object_type = type
+        self.db_name = db_name
         Meta.domain = domain
         Meta.db_object_type = type
-        self.session = DBSession(self.domain, self.domain_object_type)
+        self.session = DBSession(domain=self.domain,
+                                 type=self.domain_object_type,
+                                 db_name=self.db_name)
         logger.info("开始连接目标数据库")
         self.source_meta_data = MetaData()
         self.source_meta_data.reflect(bind=self.session.engine)
@@ -62,11 +65,12 @@ class MetaDetector:
         :param table_object: sqlalchemy table model
         :return:
         """
+
         columns_info_list = []
         i = 1
         for c in table_object.columns:
             column_type, column_type_length = self.init_column_type(c)
-            column_info = {"default_db": self.db_schema,
+            column_info = {"default_db": self.db_name,
                            "table_name": str(c.table.fullname).replace("%s." % self.db_schema, ""),
                            "column_name": c.name,
                            "column_type": column_type,

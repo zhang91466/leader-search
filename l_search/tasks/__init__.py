@@ -10,10 +10,11 @@ celery = celeryapp.celery
 
 
 @celery.task()
-def sync_table_meta(domain, db_object_type, table_list=None, table_name_prefix=None):
+def sync_table_meta(domain, db_object_type, db_name, table_list=None, table_name_prefix=None):
     from l_search.handlers.source_meta_operate.handle.meta_handle import MetaDetector
     meta_detector = MetaDetector(domain=domain,
-                                 type=db_object_type)
+                                 type=db_object_type,
+                                 db_name=db_name)
     schema_sync_info = meta_detector.detector_schema(tables=table_list,
                                                      table_name_prefix=table_name_prefix)
 

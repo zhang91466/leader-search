@@ -153,7 +153,8 @@ class WholeDbSearch:
         """
 
         meta_detector = MetaDetector(domain=cls.domain,
-                                     type=models.DBObjectType[cls.db_object_type].value)
+                                     type=models.DBObjectType[cls.db_object_type].value,
+                                     db_name=cls.db_name)
 
         sql_text = """
         %(select)s
@@ -288,6 +289,7 @@ class WholeDbSearch:
     def search(cls, search_text, block_name=None, block_key=None):
         search_data = models.FullTextIndex.search_index(domain=cls.domain,
                                                         db_object_type=cls.db_object_type,
+                                                        db_name=cls.db_name,
                                                         search_text=search_text,
                                                         block_name=block_name,
                                                         block_key=block_key)

@@ -47,7 +47,7 @@ class Meta:
                 "add_result_info": add_result_info}
 
     @classmethod
-    def get_connection_info(cls, connection_id=None, domain=None, db_object_type=None):
+    def get_connection_info(cls, connection_id=None, domain=None, db_name=None, db_object_type=None):
 
         def change_key_name(data):
             data["connection_id"] = data.pop("id")
@@ -59,8 +59,18 @@ class Meta:
         if db_object_type:
             db_object_type = models.DBObjectType[db_object_type].value
 
+        if domain is None:
+            domain = cls.domain
+
+        if db_object_type is None:
+            db_object_type = cls.db_object_type
+
+        if db_name is None:
+            db_name = cls.db_name
+
         connection_info = models.DBConnect.get_by_domain(domain=domain,
                                                          type=db_object_type,
+                                                         default_db=db_name,
                                                          connection_id=connection_id)
         connection_info = models.convert_to_dict(connection_info)
         if len(connection_info) == 1:

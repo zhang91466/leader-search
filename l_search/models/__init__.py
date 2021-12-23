@@ -62,7 +62,8 @@ class DBConnect(db.Model, InsertObject, TimestampMixin):
                         break
 
                 connection_info = cls.get_by_domain(domain=infos["domain"],
-                                                    type=infos["type"])
+                                                    type=infos["type"],
+                                                    default_db=infos["default_db"])
 
                 if is_key_complete and len(connection_info) == 0:
                     create_result = cls.create(**infos)
@@ -102,7 +103,7 @@ class DBConnect(db.Model, InsertObject, TimestampMixin):
         db.session.commit()
 
     @classmethod
-    def get_by_domain(cls, domain=None, type=None, connection_id=None, is_all=True):
+    def get_by_domain(cls, domain=None, type=None, default_db=None, connection_id=None, is_all=True):
 
         get_query = cls.query
 
@@ -111,6 +112,9 @@ class DBConnect(db.Model, InsertObject, TimestampMixin):
 
         if type:
             get_query = get_query.filter(cls.type == type)
+
+        if default_db:
+            get_query = get_query.filter(cls.default_db == default_db)
 
         if connection_id:
             get_query = get_query.filter(cls.id == connection_id)
@@ -218,7 +222,6 @@ class DBMetadata(db.Model, InsertObject, TimestampMixin):
                                           cls.is_extract_filter == 1
                                           )).update({"filter_default": filter_value})
         db.session.commit()
-
 
     @classmethod
     def modify(cls, column_id, input_data):
@@ -340,17 +343,25 @@ class FullTextIndex(db.Model, InsertObject, FullText):
     @classmethod
     def search_index(cls,
                      domain,
-                     db_object_type,
                      search_text,
+                     db_object_type=None,
+                     db_name=None,
                      block_name=None,
                      block_key=None):
 
         search_query = cls.query.filter(
             and_(
                 cls.extract_data_info.has(ExtractDataInfo.domain == domain),
-                cls.extract_data_info.has(ExtractDataInfo.db_object_type == db_object_type),
                 FullTextSearch(search_text, cls, FullTextMode.DEFAULT))
         )
+
+        if db_object_type and db_object_type != "":
+            search_query = search_query.filter(
+                cls.extract_data_info.has(ExtractDataInfo.db_object_type == db_object_type))
+
+        if db_name and db_name != "":
+            search_query = search_query.filter(
+                cls.extract_data_info.has(ExtractDataInfo.db_name == db_name))
 
         if block_name:
             search_query = search_query.filter(cls.block_name == block_name)

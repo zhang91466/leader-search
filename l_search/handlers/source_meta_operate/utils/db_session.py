@@ -9,9 +9,9 @@ from l_search import models
 
 
 class DBSession:
-    def __init__(self, domain, type, db_name=None):
+    def __init__(self, domain, type, db_name):
         engine_connect_string = None
-        self.connect_info = models.DBConnect.get_by_domain(domain=domain, type=type, is_all=False)
+        self.connect_info = models.DBConnect.get_by_domain(domain=domain, type=type, default_db=db_name, is_all=False)
 
         if type in ["greenplum", "postgresql"]:
             # postgresql: // scott: tiger @ localhost:5432 / mydatabase
@@ -27,9 +27,6 @@ class DBSession:
             # mysql: // scott: tiger @ localhost:5432 / mydatabase?charset=utf8
             connect_prefix = "mysql"
             remark = "?charset=utf8"
-
-        if db_name:
-            self.connect_info["db_name"] = db_name
 
         engine_connect_string = '%s://%s:%s@%s:%s/%s%s' % (connect_prefix,
                                                            self.connect_info.account,

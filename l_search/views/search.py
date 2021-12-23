@@ -42,7 +42,7 @@ class QueryIndex(Resource):
 
     @api_search.expect(query_index_input)
     @api_search.marshal_with(query_index_output)
-    def post(self, domain, db_object_type):
+    def post(self, domain, db_object_type=None, db_name=None):
         """
         全文检索
         :param domain:
@@ -50,7 +50,10 @@ class QueryIndex(Resource):
         :return:
         """
         WholeDbSearch.domain = domain
-        WholeDbSearch.db_object_type = db_object_type
+        if db_object_type:
+            WholeDbSearch.db_object_type = db_object_type
+        if db_name:
+            WholeDbSearch.db_name = db_name
         request_data = marshal(api_search.payload, query_index_input)
         search_data = WholeDbSearch.search(**request_data)
         return marshal(search_data, query_index_output), 200

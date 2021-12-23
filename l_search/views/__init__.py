@@ -32,7 +32,11 @@ api.add_namespace(api_task, path="/task")
 
 api_task.add_resource(TaskStatus, "/<task_id>", endpoint="task_status")
 
-api_search.add_resource(QueryIndex, "/<domain>/<db_object_type>", endpoint="query_index")
+api_search.add_resource(QueryIndex,
+                        "/<domain>",
+                        "/<domain>/<db_object_type>",
+                        "/<domain>/<db_object_type>/<db_name>",
+                        endpoint="query_index")
 
 api_mirror.add_resource(ExtractToFullTextIndexTable,
                         "/data_to_full_index/<domain>/<db_object_type>/<db_name>/<table_name>",
@@ -58,6 +62,7 @@ api_meta.add_resource(ConnectionInfo,
                       "/connections",
                       "/connections/<domain>",
                       "/connection/<domain>/<db_object_type>",
+                      "/connection/<domain>/<db_object_type>/<db_name>",
                       "/connection/<int:connection_id>",
                       endpoint="connection_info")
 

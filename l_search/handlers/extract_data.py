@@ -130,7 +130,8 @@ class ExtractData:
     @classmethod
     def extract_data(cls, data_extract_sql):
         meta_detector = MetaDetector(domain=cls.domain,
-                                     type=models.DBObjectType[cls.db_object_type].value)
+                                     type=models.DBObjectType[cls.db_object_type].value,
+                                     db_name=cls.db_name)
 
         return meta_detector.execute_select_sql(sql_text=data_extract_sql)
 

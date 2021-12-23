@@ -41,7 +41,7 @@ class ConnectionInfoCreate(Resource):
 class ConnectionInfo(Resource):
 
     @api_meta.marshal_with(connection_info_model)
-    def get(self, connection_id=None, domain=None, db_object_type=None):
+    def get(self, connection_id=None, domain=None, db_object_type=None, db_name=None):
         """
         目标库链接信息获取
         :param connection_id:
@@ -51,13 +51,15 @@ class ConnectionInfo(Resource):
         """
         connection_info = Meta.get_connection_info(connection_id=connection_id,
                                                    domain=domain,
-                                                   db_object_type=db_object_type)
+                                                   db_object_type=db_object_type,
+                                                   db_name=db_name)
         return marshal(connection_info, connection_info_model), 200
 
 
 sync_meta_schema = {
     "domain": fields.String(description="系统域"),
     "db_object_type": fields.String(description="数据库类型", enum=models.DBObjectType._member_names_),
+    "db_name": fields.String(description="数据库名称"),
     "table_list": fields.List(fields.String(description="需要抽取表名称清单", default=None)),
     "table_name_prefix": fields.String(description="需要抽取表名称前缀", default=None)
 }
@@ -77,6 +79,7 @@ class SyncMeta(Resource):
 
         task = sync_table_meta.delay(domain=request_data["domain"],
                                      db_object_type=models.DBObjectType[request_data["db_object_type"]].value,
+                                     db_name=request_data["db_name"],
                                      table_list=request_data["table_list"],
                                      table_name_prefix=request_data["table_name_prefix"]
                                      )
