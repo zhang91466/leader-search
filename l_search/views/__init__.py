@@ -6,7 +6,9 @@
 """
 from flask_restx import Api
 from l_search import __title__, __version__
-from .search import api_search, QueryIndex
+from .search import (api_search,
+                     QueryIndex,
+                     GroupIndex)
 from .mirror_data import (api_mirror,
                           ExtractToFullTextIndexTable,
                           ExtractToEntityInit,
@@ -37,6 +39,12 @@ api_search.add_resource(QueryIndex,
                         "/<domain>/<db_object_type>",
                         "/<domain>/<db_object_type>/<db_name>",
                         endpoint="query_index")
+
+api_search.add_resource(GroupIndex,
+                        "/preview/<domain>",
+                        "/preview/<domain>/<db_object_type>",
+                        "/preview/<domain>/<db_object_type>/<db_name>",
+                        endpoint="group_index")
 
 api_mirror.add_resource(ExtractToFullTextIndexTable,
                         "/data_to_full_index/<domain>/<db_object_type>/<db_name>/<table_name>",

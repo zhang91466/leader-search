@@ -344,6 +344,8 @@ class FullTextIndex(db.Model, InsertObject, FullText):
     def search_index(cls,
                      domain,
                      search_text,
+                     page=None,
+                     page_size=20,
                      db_object_type=None,
                      db_name=None,
                      block_name=None,
@@ -352,7 +354,7 @@ class FullTextIndex(db.Model, InsertObject, FullText):
         search_query = cls.query.filter(
             and_(
                 cls.extract_data_info.has(ExtractDataInfo.domain == domain),
-                FullTextSearch(search_text, cls, FullTextMode.DEFAULT))
+                FullTextSearch("*%s*" % search_text, cls, FullTextMode.BOOLEAN))
         )
 
         if db_object_type and db_object_type != "":
@@ -369,7 +371,43 @@ class FullTextIndex(db.Model, InsertObject, FullText):
         if block_key:
             search_query = search_query.filter(cls.block_key == block_key)
 
-        return search_query.all()
+        if page:
+            get_search_query = search_query.paginate(page=page, per_page=page_size).items
+        else:
+            get_search_query = search_query.all()
+
+        return get_search_query
+
+    @classmethod
+    def search_index_group(cls,
+                           domain,
+                           search_text,
+                           page=None,
+                           page_size=20,
+                           db_object_type=None,
+                           db_name=None, ):
+        search_group_query = db.session.query(cls.block_key,
+                                              cls.block_name,
+                                              func.count().label("hits_num")).filter(
+            and_(cls.extract_data_info.has(ExtractDataInfo.domain == domain),
+                 FullTextSearch("*%s*" % search_text, cls, FullTextMode.BOOLEAN)))
+
+        if db_object_type and db_object_type != "":
+            search_group_query = search_group_query.filter(
+                cls.extract_data_info.has(ExtractDataInfo.db_object_type == db_object_type))
+
+        if db_name and db_name != "":
+            search_group_query = search_group_query.filter(
+                cls.extract_data_info.has(ExtractDataInfo.db_name == db_name))
+
+        search_group_query = search_group_query.group_by(cls.block_name, cls.block_key)
+
+        if page:
+            get_search_group_query = search_group_query.paginate(page=page, per_page=page_size).items
+        else:
+            get_search_group_query = search_group_query.all()
+
+        return get_search_group_query
 
     @classmethod
     def delete_data(cls, extract_data_info_id=None, id_list=None):

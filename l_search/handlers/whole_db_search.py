@@ -286,13 +286,33 @@ class WholeDbSearch:
         return insert_row_count
 
     @classmethod
-    def search(cls, search_text, block_name=None, block_key=None):
+    def search(cls, search_text, block_name=None, block_key=None, page=None, page_size=20):
+        """
+
+        搜索语法规则：
+     +   一定要有(不含有该关键词的数据条均被忽略)。
+     -   不可以有(排除指定关键词，含有该关键词的均被忽略)。
+     >   提高该条匹配数据的权重值。
+     <   降低该条匹配数据的权重值。
+     ~   将其相关性由正转负，表示拥有该字会降低相关性(但不像-将之排除)，只是排在较后面权重值降低。
+     *   万用字，不像其他语法放在前面，这个要接在字符串后面。
+     " " 用双引号将一段句子包起来表示要完全相符，不可拆字。
+     detail:https://dev.mysql.com/doc/refman/8.0/en/fulltext-boolean.html
+        :param search_text:
+        :param block_name:
+        :param block_key:
+        :param page:
+        :param page_size:
+        :return:
+        """
         search_data = models.FullTextIndex.search_index(domain=cls.domain,
                                                         db_object_type=cls.db_object_type,
                                                         db_name=cls.db_name,
                                                         search_text=search_text,
                                                         block_name=block_name,
-                                                        block_key=block_key)
+                                                        block_key=block_key,
+                                                        page=page,
+                                                        page_size=page_size)
         search_data_dict_list = []
         search_text_list = str(search_text).replace("+", "").replace("-", "").split(" ")
         for row in search_data:
@@ -301,12 +321,30 @@ class WholeDbSearch:
                         "row_id": str(row.id).split("-")[1],
                         "block_name": row.block_name,
                         "block_key": row.block_key}
-
+            hit_str_len = 0
             hits = []
             for hit in str(row.row_content).split("*"):
                 if any(s in hit for s in search_text_list):
                     hits.append(hit)
+
+                    if hit_str_len < len(hit):
+                        hit_str_len = len(hit)
+
             row_dict["hits"] = hits
+            row_dict["weight"] = hit_str_len
             search_data_dict_list.append(row_dict)
 
-        return search_data_dict_list
+        search_data_df = pd.DataFrame(search_data_dict_list)
+        search_data_df = search_data_df.sort_values(by=["weight"], ascending=True)
+
+        search_data_final = search_data_df.to_dict("records")
+        return search_data_final
+
+    @classmethod
+    def search_group(cls, search_text, page=None, page_size=20):
+        return models.FullTextIndex.search_index_group(domain=cls.domain,
+                                                       db_object_type=cls.db_object_type,
+                                                       db_name=cls.db_name,
+                                                       search_text=search_text,
+                                                       page=page,
+                                                       page_size=page_size)
