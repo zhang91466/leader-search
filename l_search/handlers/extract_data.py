@@ -26,10 +26,10 @@ class ExtractData:
     @classmethod
     def get_table_name_in_db(cls, table_name, extract_data_info=None):
         if extract_data_info is None:
-            extract_data_info = models.ExtractDataInfo.get_by_table_name(domain=cls.domain,
-                                                                         db_object_type=cls.db_object_type,
-                                                                         db_name=cls.db_name,
-                                                                         table_name=table_name)
+            extract_data_info = models.TableInfo.get_by_table_name(domain=cls.domain,
+                                                                   db_object_type=cls.db_object_type,
+                                                                   db_name=cls.db_name,
+                                                                   table_name=table_name)
         return "%(extract_data_info_id)d_%(table_name)s" % {"extract_data_info_id": extract_data_info.id,
                                                             "table_name": table_name}
 
@@ -37,17 +37,17 @@ class ExtractData:
     def update_extract_data_info(cls, table_name, table_schema=None, extract_data_info=None):
 
         if table_schema is None:
-            table_schema = models.DBMetadata.get_table_info(domain=cls.domain,
-                                                            type=models.DBObjectType[cls.db_object_type].value,
-                                                            default_db=cls.db_name,
-                                                            table_name=table_name,
-                                                            is_extract=True)
+            table_schema = models.TableDetail.get_table_info(domain=cls.domain,
+                                                             type=models.DBObjectType[cls.db_object_type].value,
+                                                             default_db=cls.db_name,
+                                                             table_name=table_name,
+                                                             is_extract=True)
 
         if extract_data_info is None:
-            extract_data_info = models.ExtractDataInfo.get_by_table_name(domain=cls.domain,
-                                                                         db_object_type=cls.db_object_type,
-                                                                         db_name=cls.db_name,
-                                                                         table_name=table_name)
+            extract_data_info = models.TableInfo.get_by_table_name(domain=cls.domain,
+                                                                   db_object_type=cls.db_object_type,
+                                                                   db_name=cls.db_name,
+                                                                   table_name=table_name)
 
         primary_col_type_is_int = False
         extract_column_name = None
@@ -96,16 +96,16 @@ class ExtractData:
             else:
                 latest_extract_date = extract_data["latest_extract_date"]
             extract_data_info.latest_extract_date = latest_extract_date
-            models.ExtractDataInfo.upsert(table_data=extract_data_info)
+            models.TableInfo.upsert(input_data=extract_data_info)
 
     @classmethod
     def get_extract_sql(cls, table_name, where_stat=None, table_schema=None):
         if table_schema is None:
-            table_schema = models.DBMetadata.get_table_info(domain=cls.domain,
-                                                            type=models.DBObjectType[cls.db_object_type].value,
-                                                            default_db=cls.db_name,
-                                                            table_name=table_name,
-                                                            is_extract=True)
+            table_schema = models.TableDetail.get_table_info(domain=cls.domain,
+                                                             type=models.DBObjectType[cls.db_object_type].value,
+                                                             default_db=cls.db_name,
+                                                             table_name=table_name,
+                                                             is_extract=True)
 
         column_name_in_order_list = [column_info.column_name for column_info in table_schema if
                                      column_info.column_name not in DONOT_CREATE_COLUMN]
@@ -130,8 +130,8 @@ class ExtractData:
     @classmethod
     def extract_data(cls, data_extract_sql):
         meta_detector = MetaDetector(domain=cls.domain,
-                                     type=models.DBObjectType[cls.db_object_type].value,
-                                     db_name=cls.db_name)
+                                     db_type=models.DBObjectType[cls.db_object_type].value,
+                                     default_db=cls.db_name)
 
         return meta_detector.execute_select_sql(sql_text=data_extract_sql)
 
@@ -165,10 +165,10 @@ class ExtractData:
         :param table_name:
         :return:
         """
-        extract_data_info = models.ExtractDataInfo.get_by_table_name(domain=cls.domain,
-                                                                     db_object_type=cls.db_object_type,
-                                                                     db_name=cls.db_name,
-                                                                     table_name=table_name)
+        extract_data_info = models.TableInfo.get_by_table_name(domain=cls.domain,
+                                                               db_object_type=cls.db_object_type,
+                                                               db_name=cls.db_name,
+                                                               table_name=table_name)
         where_stat = None
         if extract_data_info.is_entity:
             if extract_data_info.table_extract_col is not None:
@@ -220,10 +220,10 @@ class ExtractData:
     @classmethod
     def drop(cls, table_name, extract_data_info=None):
         if extract_data_info is None:
-            extract_data_info = models.ExtractDataInfo.get_by_table_name(domain=cls.domain,
-                                                                         db_object_type=cls.db_object_type,
-                                                                         db_name=cls.db_name,
-                                                                         table_name=table_name)
+            extract_data_info = models.TableInfo.get_by_table_name(domain=cls.domain,
+                                                                   db_object_type=cls.db_object_type,
+                                                                   db_name=cls.db_name,
+                                                                   table_name=table_name)
         table_name_in_db = cls.get_table_name_in_db(table_name=table_name,
                                                     extract_data_info=extract_data_info)
         try:
@@ -231,7 +231,7 @@ class ExtractData:
             extract_data_info.is_entity = False
             extract_data_info.latest_table_primary_id = None
             extract_data_info.latest_extract_date = None
-            models.ExtractDataInfo.upsert(table_data=extract_data_info)
+            models.TableInfo.upsert(input_data=extract_data_info)
         except Exception as e:
             return e
 
@@ -247,16 +247,16 @@ class ExtractData:
         :return:
         """
 
-        extract_data_info = models.ExtractDataInfo.get_by_table_name(domain=cls.domain,
-                                                                     db_object_type=cls.db_object_type,
-                                                                     db_name=cls.db_name,
-                                                                     table_name=table_name)
+        extract_data_info = models.TableInfo.get_by_table_name(domain=cls.domain,
+                                                               db_object_type=cls.db_object_type,
+                                                               db_name=cls.db_name,
+                                                               table_name=table_name)
 
-        table_schema = models.DBMetadata.get_table_info(domain=cls.domain,
-                                                        type=models.DBObjectType[cls.db_object_type].value,
-                                                        default_db=cls.db_name,
-                                                        table_name=table_name,
-                                                        is_extract=True)
+        table_schema = models.TableDetail.get_table_info(domain=cls.domain,
+                                                         type=models.DBObjectType[cls.db_object_type].value,
+                                                         default_db=cls.db_name,
+                                                         table_name=table_name,
+                                                         is_extract=True)
         need_create = True
         # 清空表数据
         if extract_data_info and extract_data_info.is_entity is True:
@@ -283,16 +283,16 @@ class ExtractData:
                     extract_column_name = col.column_name
 
             if extract_data_info is None:
-                extract_data_info = models.ExtractDataInfo.create(domain=cls.domain,
-                                                                  db_object_type=cls.db_object_type,
-                                                                  db_name=cls.db_name,
-                                                                  table_name=table_name,
-                                                                  table_primary_id=primary_column_name,
-                                                                  table_extract_col=extract_column_name,
-                                                                  is_entity=True)
+                extract_data_info = models.TableInfo.create(domain=cls.domain,
+                                                            db_object_type=cls.db_object_type,
+                                                            db_name=cls.db_name,
+                                                            table_name=table_name,
+                                                            table_primary_id=primary_column_name,
+                                                            table_extract_col=extract_column_name,
+                                                            is_entity=True)
             else:
                 extract_data_info.is_entity = True
-                models.ExtractDataInfo.upsert(table_data=extract_data_info)
+                models.TableInfo.upsert(input_data=extract_data_info)
 
             table_name_in_db = cls.get_table_name_in_db(table_name=table_name,
                                                         extract_data_info=extract_data_info)
@@ -305,19 +305,19 @@ class ExtractData:
 
     @classmethod
     def get(cls, table_name, column_list=None, where_stat=None):
-        extract_data_info = models.ExtractDataInfo.get_by_table_name(domain=cls.domain,
-                                                                     db_object_type=cls.db_object_type,
-                                                                     db_name=cls.db_name,
-                                                                     table_name=table_name)
+        extract_data_info = models.TableInfo.get_by_table_name(domain=cls.domain,
+                                                               db_object_type=cls.db_object_type,
+                                                               db_name=cls.db_name,
+                                                               table_name=table_name)
 
         if extract_data_info.is_entity:
 
             if column_list:
-                table_schema = models.DBMetadata.get_table_info(domain=cls.domain,
-                                                                type=models.DBObjectType[cls.db_object_type].value,
-                                                                default_db=cls.db_name,
-                                                                table_name=table_name,
-                                                                is_extract=True)
+                table_schema = models.TableDetail.get_table_info(domain=cls.domain,
+                                                                 type=models.DBObjectType[cls.db_object_type].value,
+                                                                 default_db=cls.db_name,
+                                                                 table_name=table_name,
+                                                                 is_extract=True)
 
                 column_name_in_order_list = [column_info.column_name for column_info in table_schema if
                                              column_info.column_name not in DONOT_CREATE_COLUMN]

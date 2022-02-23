@@ -41,12 +41,12 @@ class WholeDbSearch:
         :return: dict {select:select column sql, from: from table sql, latest_date: 获取最终抽取时间与最大主键id}
         """
 
-        table_schema = models.DBMetadata.get_table_info(domain=cls.domain,
-                                                        type=models.DBObjectType[cls.db_object_type].value,
-                                                        default_db=cls.db_name,
-                                                        table_name=table_name,
-                                                        is_extract=None
-                                                        )
+        table_schema = models.TableDetail.get_table_info(domain=cls.domain,
+                                                         type=models.DBObjectType[cls.db_object_type].value,
+                                                         default_db=cls.db_name,
+                                                         table_name=table_name,
+                                                         is_extract=None
+                                                         )
 
         select_case_str = ""
         concat_str = ""
@@ -153,8 +153,8 @@ class WholeDbSearch:
         """
 
         meta_detector = MetaDetector(domain=cls.domain,
-                                     type=models.DBObjectType[cls.db_object_type].value,
-                                     db_name=cls.db_name)
+                                     db_type=models.DBObjectType[cls.db_object_type].value,
+                                     default_db=cls.db_name)
 
         sql_text = """
         %(select)s
@@ -189,7 +189,7 @@ class WholeDbSearch:
 
         extract_data_info.latest_table_primary_id = get_last_date["latest_table_primary_id"]
         extract_data_info.latest_extract_date = get_last_date["latest_extract_date"]
-        models.ExtractDataInfo.upsert(table_data=extract_data_info)
+        models.TableInfo.upsert(input_data=extract_data_info)
         return insert_success_row_count
 
     @classmethod
@@ -218,10 +218,10 @@ class WholeDbSearch:
         :param block_key: 该数据在业务域中的关键词
         :param is_full: 是否全量抽取数据
         """
-        extract_data_info = models.ExtractDataInfo.get_by_table_name(domain=cls.domain,
-                                                                     db_object_type=cls.db_object_type,
-                                                                     db_name=cls.db_name,
-                                                                     table_name=table_name)
+        extract_data_info = models.TableInfo.get_by_table_name(domain=cls.domain,
+                                                               db_object_type=cls.db_object_type,
+                                                               db_name=cls.db_name,
+                                                               table_name=table_name)
 
         where_stat = ""
         # 增量抽取
@@ -239,16 +239,16 @@ class WholeDbSearch:
             return extract_sql
 
         if extract_data_info is None:
-            extract_data_info = models.ExtractDataInfo.create(domain=cls.domain,
-                                                              db_object_type=cls.db_object_type,
-                                                              db_name=cls.db_name,
-                                                              table_name=table_name,
-                                                              table_primary_id=extract_sql["table_primary_id"],
-                                                              table_primary_id_is_int=extract_sql[
+            extract_data_info = models.TableInfo.create(domain=cls.domain,
+                                                        db_object_type=cls.db_object_type,
+                                                        db_name=cls.db_name,
+                                                        table_name=table_name,
+                                                        table_primary_id=extract_sql["table_primary_id"],
+                                                        table_primary_id_is_int=extract_sql[
                                                                   "primary_col_type_is_int"],
-                                                              table_extract_col=extract_sql["table_extract_col"],
-                                                              is_full_text_index=True
-                                                              )
+                                                        table_extract_col=extract_sql["table_extract_col"],
+                                                        is_full_text_index=True
+                                                        )
 
         extract_data, get_last_date_data = cls.extract_data(execute_sql=extract_sql,
                                                             extract_data_info_id=extract_data_info.id,
@@ -317,7 +317,7 @@ class WholeDbSearch:
         search_text_list = str(search_text).replace("+", "").replace("-", "").split(" ")
         for row in search_data:
             row_dict = {"db_name": row.extract_data_info.db_name,
-                        "table_name": row.extract_data_info.table_name,
+                        "table_name": row.extract_data_info.table_info,
                         "row_id": str(row.id).split("-")[1],
                         "block_name": row.block_name,
                         "block_key": row.block_key}

@@ -13,51 +13,52 @@ logger = Logger()
 
 
 class MetaDetector:
-    def __init__(self, domain, type, db_name, db_schema=None):
-        self.domain = domain
-        self.domain_object_type = type
-        self.db_name = db_name
-        Meta.domain = domain
-        Meta.db_object_type = type
-        self.session = DBSession(domain=self.domain,
-                                 type=self.domain_object_type,
-                                 db_name=self.db_name)
+    def __init__(self, domain, db_type, default_db, db_schema=None):
+
+        connection_info = models.DBConnect.get_by_domain(domain=domain,
+                                                         db_type=db_type,
+                                                         default_db=default_db,
+                                                         db_schema=db_schema,
+                                                         is_all=False)
+
+        self.session = DBSession(connection_info=connection_info)
         logger.info("开始连接目标数据库")
         self.source_meta_data = MetaData()
         self.source_meta_data.reflect(bind=self.session.engine)
         logger.info("目标数据库连接完成")
 
-        if type in ["postgresql", "greenplum"]:
-            if not db_schema:
+        if db_type in ["postgresql", "greenplum"]:
+            if db_schema is None:
                 db_schema = "public"
             else:
                 self.source_meta_data.reflect(schema=db_schema)
             self.db_schema = db_schema
-        else:
-            self.db_schema = self.session.connect_info["db_name"]
 
-    def is_extract_filter(self, column_data):
-        result = 0
+    @staticmethod
+    def is_extract_filter(column_data):
+        result = False
         if column_data.name == "update_ts":
-            result = 1
+            result = True
         return result
 
-    def is_primary(self, column_data):
-        return int(column_data.primary_key)
+    @staticmethod
+    def is_primary(column_data):
+        return column_data.primary_key
 
-    def init_column_type(self, column_data):
-        ctype = ""
-        clength = ""
-        if not isinstance(column_data.type, NullType):
+    @staticmethod
+    def init_column_type(column_data):
+        column_type = ""
+        column_length = ""
+        if not isinstance(column_data.db_type, NullType):
             try:
-                ctype = str(re.sub("(\().*?(\))", "", str(column_data.type))).lower()
-                clength = str(column_data.type.length)
+                column_type = str(re.sub("(\().*?(\))", "", str(column_data.db_type))).lower()
+                column_length = str(column_data.db_type.length)
             except:
                 pass
         else:
-            ctype = "text"
+            column_type = "text"
 
-        return ctype, clength
+        return column_type, column_length
 
     def detector_table(self, table_object):
         """
@@ -65,43 +66,45 @@ class MetaDetector:
         :param table_object: sqlalchemy table model
         :return:
         """
-
+        result = {"table_name": table_object.name}
         columns_info_list = []
         i = 1
         for c in table_object.columns:
             column_type, column_type_length = self.init_column_type(c)
-            column_info = {"default_db": self.db_name,
-                           "table_name": str(c.table.fullname).replace("%s." % self.db_schema, ""),
+            column_info = {
                            "column_name": c.name,
                            "column_type": column_type,
                            "column_type_length": column_type_length,
                            "column_comment": c.comment,
                            "column_position": i,
-                           "is_extract": 1,
-                           "is_primary": self.is_primary(c),
-                           "is_extract_filter": self.is_extract_filter(c),
                            }
             i += 1
             columns_info_list.append(column_info)
 
-        return columns_info_list
+            if self.is_primary(c):
+                column_info["is_primary"] = True
+                result["table_primary_id"] = c.name
+
+                if column_type not in ["integer"]:
+                    result["table_primary_id_is_int"] = False
+
+            if self.is_extract_filter(c):
+                result["table_extract_col"] = c.name
+
+        result["columns"] = columns_info_list
+
+        return result
 
     def detector_schema(self, tables=None, table_name_prefix=None):
         """
-        查看库多少表
+        查看库多少表,并写入数据库
         :param tables: 查询的表名 list
         :param table_name_prefix: 表名前缀里面有
         :return:
         """
 
-        def detector_table():
-            column_info_list = self.detector_table(list_tables[t])
-            table_list[list_tables[t].name] = column_info_list
-            return column_info_list
-
-        column_info_list = []
-        list_tables = self.source_meta_data.tables
-        table_list = {}
+        table_detail_info = []
+        list_tables = self.source_meta_data.table
 
         if tables is None and table_name_prefix is None:
             is_all = True
@@ -112,19 +115,14 @@ class MetaDetector:
 
         for t in list_tables:
             if is_all:
-                column_info_list = detector_table()
+                table_detail_info = self.detector_table(list_tables[t])
             else:
                 if isinstance(tables, list) and t in tables:
-                    column_info_list = detector_table()
+                    table_detail_info = self.detector_table(list_tables[t])
                 elif table_name_prefix and t.startswith(table_name_prefix):
-                    column_info_list = detector_table()
+                    table_detail_info = self.detector_table(list_tables[t])
 
-            if len(column_info_list) > 0:
-                logger.info("Got %s's meta" % t)
-                update_num = Meta.add_table_info(column_info_list)
-                column_info_list = []
-
-                result[list_tables[t].name] = update_num
+            result[list_tables[t].name] = Meta.add_table_info(table_detail_info)
 
         return result
 
@@ -134,9 +132,9 @@ class MetaDetector:
 	    查看结构是否存在问题
         """
 
-        store_table_info = models.DBMetadata.get_tables(domain=self.domain,
-                                                             type=self.domain_object_type)
-        list_tables = [x.table_name for x in store_table_info]
+        store_table_info = models.TableDetail.get_tables(domain=self.domain,
+                                                         type=self.domain_object_type)
+        list_tables = [x.table_info for x in store_table_info]
         return self.detector_schema(tables=list_tables)
 
     def execute_select_sql(self, sql_text):

@@ -43,7 +43,7 @@ class TableOperate:
                     column_length = ""
 
                 meta_column = meta_column + column_stat % {"column_name": col.column_name,
-                                                           "column_type": COLUMN_TYPE_MAPPING[col.type][
+                                                           "column_type": COLUMN_TYPE_MAPPING[col.db_type][
                                                                col.column_type],
                                                            "column_length": column_length}
 
