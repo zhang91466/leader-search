@@ -14,41 +14,32 @@ logger = Logger()
 class Meta:
 
     @classmethod
-    def upsert_connection_info(cls, input_data):
+    def _del_none_from_dict(cls, input_data):
+        for k in input_data.copy():
+            if input_data[k] is None:
+                del(input_data[k])
 
-        connection_id = None
-
-        if "connection_id" in input_data:
-            connection_id = input_data["connection_id"]
-
-        if connection_id:
-
-            for k in input_data.copy():
-                if input_data[k] is None:
-                    input_data.pop(k)
-
-            models.DBConnect.modify(connection_id=connection_id, **input_data)
-            add_result_info = ""
-        else:
-
-            infos = {"domain": input_data["domain"],
-                     "type": models.DBObjectType[input_data["db_object_type"]].value,
-                     "host": input_data["host"],
-                     "port": input_data["port"],
-                     "account": input_data["account"],
-                     "pwd": input_data["pwd"],
-                     "default_db": input_data["default_db"]}
-            connection_id, add_result_info = models.DBConnect.add_row(infos=infos)
-
-        return {"connection_id": connection_id,
-                "add_result_info": add_result_info}
+        return input_data
 
     @classmethod
-    def get_connection_info(cls, connection_id=None, domain=None, db_name=None, db_type=None):
+    def upsert_connection_info(cls, input_data):
+
+        if not isinstance(input_data, list):
+            input_data = [input_data]
+
+        need_upsert_data = []
+        for d in input_data:
+            need_upsert_data.append(cls._del_none_from_dict(input_data=d))
+
+        upsert_data = models.DBConnect.upsert(input_data=input_data)
+
+        return upsert_data
+
+    @classmethod
+    def get_connection_info(cls, connection_id=None, domain=None, default_db=None, db_type=None):
 
         def change_key_name(data):
-            data["connection_id"] = data.pop("id")
-            data["db_type"] = models.DBObjectType(data["db_object_type"]).name
+            data["db_type"] = models.DBObjectType(data["db_type"]).name
             return data
 
         if db_type:
@@ -56,7 +47,7 @@ class Meta:
 
         connection_info = models.DBConnect.get_by_domain(domain=domain,
                                                          db_type=db_type,
-                                                         default_db=db_name,
+                                                         default_db=default_db,
                                                          connection_id=connection_id)
         connection_info = models.convert_to_dict(connection_info)
         connection_info = [change_key_name(c_data) for c_data in connection_info]
@@ -97,7 +88,7 @@ class Meta:
         failed_info = ""
 
         for row in input_data:
-            if any(d["data"].get('id', row["id"]) == 'red' for d in tables_info_list):
+            if any(d["data"].get('id', row["id"]) == row["id"] for d in tables_info_list):
                 modify_result = models.TableDetail.modify(column_id=row["id"], input_data=row)
                 change += 1
 
@@ -110,23 +101,22 @@ class Meta:
     def add_table_info(cls, connection_info, input_meta):
         """
         一个表的列信息
-        :param input_meta:{table_name:[{"db_name":"",
-                            "table_name":"",
+        :param input_meta:{columns:[{
                             "column_name":"",
                             "column_type":"",
                             "column_type_length":"",
                             "column_comment":"",
                             "column_position":"",
                             }],
+                            table_name:xxx
                             table_primary_id:xx
                             table_primary_id_is_int:Ture,
                             table_extract_col:xxx
         """
-        table_info = models.TableInfo.upsert(connection_info=connection_info,
-                                             table_name=input_meta["table_name"],
-                                             table_primary_id=input_meta["table_primary_id"],
-                                             table_primary_id_is_int=input_meta["table_primary_id_is_int"],
-                                             table_extract_col=input_meta["table_extract_col"])
+        table_detail_insert_data = input_meta.pop("columns")
+
+        input_meta["connection_id"] = connection_info.id
+        table_info = models.TableInfo.upsert(input_data=input_meta)
 
         required_keys = ["column_name",
                          "column_type",
@@ -134,38 +124,32 @@ class Meta:
                          "column_comment",
                          "column_position"]
 
-        input_meta_keys = input_meta["data"][0].keys()
+        input_meta_keys = table_detail_insert_data[0].keys()
 
         check_keys = list(set(required_keys) - set(input_meta_keys))
 
-        update_num = 0
+        insert_row_count = 0
         # 确保key都存在
         if len(check_keys) == 0:
 
             get_table_info = models.TableDetail.get_table_info(table_info=table_info)
             check = False
-            if len(get_table_info) > len(input_meta):
-                failed_info = "同步表信息（%s）数据库中记录的列多于更新的列，无法更新" % input_meta[0]["table_name"]
-                logger.info(failed_info)
-                return failed_info
-            elif len(get_table_info) < len(input_meta) and len(get_table_info) != 0:
-                input_meta = input_meta[len(get_table_info) - 1:]
-                check = True
-            elif len(get_table_info) == len(input_meta):
-                input_meta = []
 
-            for items in input_meta:
+            if get_table_info:
 
-                get_column_info = None
-                if check:
-                    get_column_info = models.TableDetail.get_table_info(domain=cls.domain,
-                                                                        type=cls.db_object_type,
-                                                                        default_db=items["default_db"],
-                                                                        table_name=items["table_name"],
-                                                                        column_name=items["column_name"])
+                get_table_info_list = [u.__dict__ for u in get_table_info]
+                table_detail_insert_data_check = table_detail_insert_data.copy()
 
-                if get_column_info is None:
-                    models.TableDetail.create(**items)
-                    update_num = update_num + 1
+                for i in range(len(get_table_info_list)):
+                    if get_table_info_list[i]["column_name"] == table_detail_insert_data_check[i]["column_name"]:
+                        if get_table_info_list[i]["column_position"] == table_detail_insert_data_check[i]["column_position"]:
+                            table_detail_insert_data.remove(table_detail_insert_data_check[i])
+                        else:
+                            failed_info = "同步后（%s）的列信息顺序与已记录的表信息条数，无法更新" % input_meta["table_name"]
+                            logger.debug(failed_info)
+                            return failed_info
 
-        return str(update_num)
+            if len(table_detail_insert_data) > 0:
+                insert_row_count = models.TableDetail.bulk_insert(input_data=table_detail_insert_data)
+
+        return insert_row_count

@@ -5,7 +5,7 @@
 @file:__init__.py
 """
 
-SQLALCHEMY_DATABASE_URI = "mysql://root:leadmap1102@192.168.1.107:7601/metadata_l_search?charset=utf8mb4"
+SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://postgres:123456xxx@192.168.1.55:5432/l_search"
 
 PROXIES_COUNT = 1
 

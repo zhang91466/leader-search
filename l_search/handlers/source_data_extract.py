@@ -8,12 +8,10 @@
 from l_search import models
 from l_search.models.base import db
 from l_search.models.extract_table_models import TableOperate, DONOT_CREATE_COLUMN
-from l_search.handlers.source_meta_operate.handle.meta_handle import MetaDetector
+from l_search.handlers.source_meta_detector import MetaDetector
 from l_search import settings
 from l_search.utils.logger import Logger
-from l_search.utils import json_converter
 import pandas as pd
-import simplejson as json
 
 logger = Logger()
 

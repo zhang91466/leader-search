@@ -8,7 +8,7 @@ from flask_restx import Namespace, Resource, fields, marshal
 from l_search.tasks import (full_text_index_extract,
                             table_extract_init,
                             table_extract_upsert)
-from l_search.handlers.extract_data import ExtractData
+from l_search.handlers.source_data_extract import ExtractData
 
 api_mirror = Namespace('mirror_data', description='Extract data from source')
 

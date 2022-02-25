@@ -18,17 +18,17 @@ class DBSession:
     def __init__(self, connection_info):
         self.connect_info = connection_info
 
-        if connection_info.db_type in ["greenplum", "postgresql"]:
+        if connection_info.db_type in [models.DBObjectType("greenplum"), models.DBObjectType("postgresql")]:
             # postgresql: // scott: tiger @ localhost:5432 / mydatabase
             connect_prefix = "postgresql+psycopg2"
             remark = ""
 
-        elif type in ["mysql"]:
+        elif connection_info.db_type in [models.DBObjectType("mysql")]:
             # mysql: // scott: tiger @ localhost:5432 / mydatabase?charset=utf8
             connect_prefix = "mysql"
             remark = "?character_set_server=utf8mb4"
 
-        elif type in ["mariadb"]:
+        elif connection_info.db_type in [models.DBObjectType("mariadb")]:
             # mysql: // scott: tiger @ localhost:5432 / mydatabase?charset=utf8
             connect_prefix = "mysql"
             remark = "?charset=utf8"
@@ -49,8 +49,8 @@ class DBSession:
     # 1.0的老办法进行sql查询
 
     def connect_init(self):
-        DBSession = sessionmaker(bind=self.engine)
-        self.sessions = DBSession()
+        connection_session = sessionmaker(bind=self.engine)
+        self.sessions = connection_session()
 
     @contextmanager
     def session_maker(self):
@@ -72,13 +72,13 @@ class DBSession:
 class MetaDetector:
     def __init__(self, domain, db_type, default_db, db_schema=None):
 
-        connection_info = models.DBConnect.get_by_domain(domain=domain,
-                                                         db_type=db_type,
-                                                         default_db=default_db,
-                                                         db_schema=db_schema,
-                                                         is_all=False)
+        self.connection_info = models.DBConnect.get_by_domain(domain=domain,
+                                                              db_type=db_type,
+                                                              default_db=default_db,
+                                                              db_schema=db_schema,
+                                                              is_all=False)
 
-        self.session = DBSession(connection_info=connection_info)
+        self.session = DBSession(connection_info=self.connection_info)
         logger.info("开始连接目标数据库")
         self.source_meta_data = MetaData()
         self.source_meta_data.reflect(bind=self.session.engine)
@@ -125,12 +125,12 @@ class MetaDetector:
         for c in table_object.columns:
             column_type, column_type_length = self.init_column_type(c)
             column_info = {
-                           "column_name": c.name,
-                           "column_type": column_type,
-                           "column_type_length": column_type_length,
-                           "column_comment": c.comment,
-                           "column_position": i,
-                           }
+                "column_name": c.name,
+                "column_type": column_type,
+                "column_type_length": column_type_length,
+                "column_comment": c.comment,
+                "column_position": i,
+            }
             i += 1
             columns_info_list.append(column_info)
 
@@ -175,7 +175,8 @@ class MetaDetector:
                 elif table_name_prefix and t.startswith(table_name_prefix):
                     table_detail_info = self.detector_table(list_tables[t])
 
-            result[list_tables[t].name] = Meta.add_table_info(table_detail_info)
+            result[list_tables[t].name] = Meta.add_table_info(connection_info=self.connection_info,
+                                                              input_meta=table_detail_info)
 
         return result
 
@@ -185,8 +186,7 @@ class MetaDetector:
 	    查看结构是否存在问题
         """
 
-        store_table_info = models.TableDetail.get_tables(domain=self.domain,
-                                                         type=self.domain_object_type)
+        store_table_info = models.TableInfo.get_tables(connection_info=self.connection_info)
         list_tables = [x.table_info for x in store_table_info]
         return self.detector_schema(tables=list_tables)
 

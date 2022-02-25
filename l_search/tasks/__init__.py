@@ -11,7 +11,7 @@ celery = celeryapp.celery
 
 @celery.task()
 def sync_table_meta(domain, db_object_type, db_name, table_list=None, table_name_prefix=None):
-    from l_search.handlers.source_meta_operate.handle.meta_handle import MetaDetector
+    from l_search.handlers.source_meta_detector import MetaDetector
     meta_detector = MetaDetector(domain=domain,
                                  db_type=db_object_type,
                                  default_db=db_name)
@@ -37,7 +37,7 @@ def full_text_index_extract(domain, db_object_type, db_name, is_full, table_name
 
 @celery.task()
 def table_extract_init(domain, db_object_type, db_name, table_name, need_drop):
-    from l_search.handlers.extract_data import ExtractData
+    from l_search.handlers.source_data_extract import ExtractData
     ExtractData.domain = domain
     ExtractData.db_object_type = db_object_type
     ExtractData.db_name = db_name
@@ -47,7 +47,7 @@ def table_extract_init(domain, db_object_type, db_name, table_name, need_drop):
 
 @celery.task()
 def table_extract_upsert(domain, db_object_type, db_name, table_name):
-    from l_search.handlers.extract_data import ExtractData
+    from l_search.handlers.source_data_extract import ExtractData
     ExtractData.domain = domain
     ExtractData.db_object_type = db_object_type
     ExtractData.db_name = db_name

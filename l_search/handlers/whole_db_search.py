@@ -6,7 +6,7 @@
 """
 from l_search.utils.logger import Logger
 from l_search import models
-from l_search.handlers.source_meta_operate.handle.meta_handle import MetaDetector
+from l_search.handlers.source_meta_detector import MetaDetector
 from l_search import settings
 import hashlib
 import pandas as pd

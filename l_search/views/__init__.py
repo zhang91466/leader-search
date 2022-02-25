@@ -18,7 +18,7 @@ from .mirror_data import (api_mirror,
                           )
 from .data_meta import (api_meta,
                         ConnectionInfo,
-                        ConnectionInfoCreate,
+                        ConnectionInfoUpsert,
                         SyncMeta,
                         MetaInfo)
 from .tasks_info import (api_task,
@@ -69,14 +69,14 @@ api_mirror.add_resource(ExtractToEntityDrop,
 api_meta.add_resource(ConnectionInfo,
                       "/connections",
                       "/connections/<domain>",
-                      "/connection/<domain>/<db_object_type>",
-                      "/connection/<domain>/<db_object_type>/<db_name>",
+                      "/connection/<domain>/<db_type>",
+                      "/connection/<domain>/<db_type>/<db_name>",
                       "/connection/<int:connection_id>",
                       endpoint="connection_info")
 
-api_meta.add_resource(ConnectionInfoCreate,
-                      "/connection/create",
-                      endpoint="connection_info_create")
+api_meta.add_resource(ConnectionInfoUpsert,
+                      "/connection/upsert",
+                      endpoint="connection_info_upsert")
 
 api_meta.add_resource(SyncMeta, "/sync", endpoint="sync_meta")
 

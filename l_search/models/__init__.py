@@ -8,6 +8,7 @@ from .base import db, Column, InsertObject, TimestampMixin
 import enum
 from .mysql_full_text_search import FullText, FullTextSearch, FullTextMode
 from sqlalchemy import or_, and_, func
+from sqlalchemy.dialects.postgresql import insert
 from l_search.utils.logger import Logger
 
 logger = Logger()
@@ -20,6 +21,9 @@ def convert_to_dict(sqlalchemy_data):
     :return: 转换为字典
     """
     result = []
+    if not isinstance(sqlalchemy_data, list):
+        sqlalchemy_data = [sqlalchemy_data]
+
     for row in sqlalchemy_data:
         row_dict = row.__dict__
         row_dict.pop("_sa_instance_state")
@@ -29,7 +33,9 @@ def convert_to_dict(sqlalchemy_data):
 
 class DBObjectType(enum.Enum):
     mysql = "mysql"
-    postgres = "postgresql"
+    postgresql = "postgresql"
+    greenplum = "greenplum"
+    mariadb = "mariadb"
 
 
 class DBConnect(db.Model, InsertObject, TimestampMixin):
@@ -83,6 +89,27 @@ class DBConnect(db.Model, InsertObject, TimestampMixin):
             return None, "failed %s" % failed_info
         else:
             return create_result.id, ""
+    @classmethod
+    def upsert(cls, input_data):
+        insert_stmt = insert(cls.__table__).values(input_data)
+
+        set_dict = {}
+
+        for c in insert_stmt.excluded:
+            set_dict[c.name] = c
+
+        set_dict.pop("updated_at")
+        set_dict.pop("created_at")
+        set_dict.pop("id")
+
+        # pg 特定写法
+        upsert_stmt = insert_stmt.on_conflict_do_update(index_elements=["id"],
+                                                        set_=set_dict)
+
+        execute_result = db.session.execute(upsert_stmt)
+        db.session.commit()
+
+        return execute_result
 
     @classmethod
     def modify(cls,
@@ -158,17 +185,22 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
     connection_id = Column(db.Integer, db.ForeignKey("db_connect_info.id"))
     connection = db.relationship(DBConnect, backref="table_info_db_connect")
     table_name = Column(db.String(500))
-    table_primary_id = Column(db.String(150), nullable=True)
-    table_primary_id_is_int = Column(db.Boolean, default=True)
+    table_primary_col = Column(db.String(150), nullable=True)
+    table_primary_col_is_int = Column(db.Boolean, default=True)
     table_extract_col = Column(db.String(150), nullable=True)
     need_extract = Column(db.Boolean, default=False)
     latest_table_primary_id = Column(db.String(150), nullable=True)
     latest_extract_date = Column(db.DateTime(), nullable=True)
 
     @classmethod
-    def get_tables(cls, connection_id, table_name=None, need_extract=None):
+    def get_tables(cls,
+                   connection_id=None,
+                   connection_info=None,
+                   table_name=None,
+                   need_extract=None):
         """
         元数据表信息提取sql生成
+        :param connection_info: object DBConnect
         :param need_extract: 获取需抽取的
         :param connection_id:  DBConnect id
         :param table_name: 筛选表 单个或多个(a|b|c)
@@ -179,7 +211,11 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
                                       cls.connection_info.db_type,
                                       cls.connection_info.default_db,
                                       cls.table_name
-                                      ).filter(cls.connection_id == connection_id)
+                                      )
+        if connection_id:
+            meta_query = meta_query.filter(cls.connection_id == connection_id)
+        elif connection_info:
+            meta_query = meta_query.filter(cls.connection == connection_info)
 
         if table_name:
             logger.debug("查询链接id(%d)下的表信息:%s" % (connection_id, table_name))
@@ -205,44 +241,29 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
 
     @classmethod
     def upsert(cls,
-               connection_info,
-               table_name,
-               input_data=None,
-               table_primary_id=None,
-               table_primary_id_is_int=None,
-               table_extract_col=None,
-               latest_table_primary_id=None,
-               latest_extract_date=None,
-               need_extract=None):
+               input_data
+               ):
+        """
 
-        if input_data is None:
-            input_data = cls.get_by_table_name(connection_info=connection_info,
-                                               table_name=table_name)
-        else:
-            input_data = cls(connection_info=connection_info,
-                             table_name=table_name)
+        :param input_data:
+        [{connection_id:1,
+        table_name:xxx,
+        table_primary_col:xxx,
+        table_primary_col_is_int:xxx,
+        table_extract_col:xxx
+        }]
+        :return:
+        """
 
-        if table_primary_id:
-            input_data.table_primary_id = table_primary_id
+        insert_stmt = insert(cls.__table__).values(input_data)
+        update_dict = {x.name: x for x in insert_stmt.inserted}
+        # pg 特定写法
+        upsert_stmt = insert_stmt.on_conflict_do_update(index_elements=["connection_id", "table_name"],
+                                                        set_=update_dict)
 
-        if table_primary_id_is_int:
-            input_data.table_primary_id_is_int = table_primary_id_is_int
-
-        if table_extract_col:
-            input_data.table_extract_col = table_extract_col
-
-        if latest_table_primary_id:
-            input_data.latest_table_primary_id = latest_table_primary_id
-
-        if latest_extract_date:
-            input_data.latest_extract_date = latest_extract_date
-
-        if need_extract:
-            input_data.need_extract = need_extract
-
-        db.session.add(input_data)
+        execute_result = db.session.execute(upsert_stmt)
         db.session.commit()
-        return input_data
+        return execute_result
 
     @classmethod
     def delete_table(cls, connection_info, table_name):
@@ -327,8 +348,7 @@ class FullTextIndex(db.Model, InsertObject, FullText):
     __fulltext_columns__ = ("row_content",)
 
     id = Column(db.String(300), primary_key=True)
-    extract_data_info_id = Column(db.Integer, db.ForeignKey("extract_data_info.id"))
-    extract_data_info = db.relationship(TableInfo, backref="fulltextindex_extractdatainfo")
+    extract_data_info_id = Column(db.Integer)
     block_name = Column(db.String(500))
     block_key = Column(db.String(500))
     row_content = Column(db.Text())
