@@ -87,8 +87,8 @@ class ExtractData:
         if extract_data.rowcount > 0:
             extract_data = extract_data.fetchone()
             aa = extract_data["latest_table_primary_id"]
-            extract_data_info.table_primary_id = primary_column_name
-            extract_data_info.table_primary_id_is_int = primary_col_type_is_int
+            extract_data_info.table_primary_col = primary_column_name
+            extract_data_info.table_primary_col_is_int = primary_col_type_is_int
             extract_data_info.table_extract_col = extract_column_name
             extract_data_info.latest_table_primary_id = extract_data["latest_table_primary_id"]
             if extract_data["latest_extract_date"] == "":
@@ -182,21 +182,21 @@ class ExtractData:
 
             extract_data_df = pd.DataFrame(extract_data)
 
-            if extract_data_info.table_primary_id_is_int:
+            if extract_data_info.table_primary_col_is_int:
                 extract_data_df_less_max_p_id_df = extract_data_df[
-                    extract_data_df[extract_data_info.table_primary_id].astype(int) < int(
+                    extract_data_df[extract_data_info.table_primary_col].astype(int) < int(
                         extract_data_info.latest_table_primary_id)]
                 extract_data_df_less_max_p_id_list = extract_data_df_less_max_p_id_df[
-                    extract_data_info.table_primary_id].astype(str).to_list()
+                    extract_data_info.table_primary_col].astype(str).to_list()
                 delete_value = ",".join(extract_data_df_less_max_p_id_list)
             else:
-                extract_data_df_less_max_p_id_list = extract_data_df[extract_data_info.table_primary_id].astype(
+                extract_data_df_less_max_p_id_list = extract_data_df[extract_data_info.table_primary_col].astype(
                     str).to_list()
                 delete_value = "'" + "','".join(extract_data_df_less_max_p_id_list) + "'"
 
             # 删除已经存在的id
             delete_where_stat = " %(column_name)s in (%(delete_value)s)" % {
-                "column_name": extract_data_info.table_primary_id,
+                "column_name": extract_data_info.table_primary_col,
                 "delete_value": delete_value}
             TableOperate.delete(table_name=cls.get_table_name_in_db(table_name=table_name,
                                                                     extract_data_info=extract_data_info),
