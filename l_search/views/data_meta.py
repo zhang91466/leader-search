@@ -102,21 +102,23 @@ meta_info_schema = {
 
 meta_info_model = api_meta.model("meta_info_schema", meta_info_schema)
 
-meta_info_list_model = api_meta.model("meta_info_list_model", {
+# fields.List(fields.Nested(meta_info_model))})
+table_info_schema = {
+    "id": fields.Integer(description="表ID", ),
+    "connection_id": fields.Integer(description="数据库连接ID"),
     "table_name": fields.String(description="表名"),
-    "data": fields.List(fields.Nested(meta_info_model))})
+    "table_primary_col": fields.String(description="表的主键列名"),
+    "table_primary_col_is_int": fields.Boolean(description="表的主键列是否是int类型"),
+    "table_extract_col": fields.String(description="表用于抽取的列名"),
+    "need_extract": fields.Boolean(description="表是否需要抽取"),
+    "latest_table_primary_id": fields.String(description="记录最新的主键id"),
+    "latest_extract_date": fields.String(description="记录最新的抽取时间")
+}
+table_info_model = api_meta.model("table_info_schema", table_info_schema)
 
-meta_info_modify_schema = {"id": meta_info_model["id"],
-                           "column_comment": meta_info_model["column_comment"],
-                           "is_primary": meta_info_model["is_primary"],
-                           "is_extract": meta_info_model["is_extract"]}
+class TableInfo(Resource):
 
-meta_info_modify_model = api_meta.model("meta_info_modify_schema", meta_info_modify_schema)
-
-
-class MetaInfo(Resource):
-
-    @api_meta.marshal_with(meta_info_list_model)
+    @api_meta.marshal_with(table_info_model)
     def get(self, connection_id, table_name=None):
         """
         已收集的目标库表结构信息获取
@@ -124,20 +126,19 @@ class MetaInfo(Resource):
         :param table_name:
         :return:
         """
-        get_result = Meta.get_table_meta(connection_id=connection_id, table_name=table_name)
-        return_data = marshal(get_result, meta_info_list_model)
+        get_result = Meta.get_table_info(connection_id=connection_id, table_name=table_name)
+        return_data = marshal(get_result, table_info_model)
         return return_data, 200
 
-    @api_meta.expect(meta_info_modify_model)
-    def post(self, connection_id, table_name):
+    @api_meta.expect(table_info_model)
+    def post(self):
         """
         已收集的目标库表结构信息修改
         :param connection_id:
         :param table_name:
         :return:
         """
-        request_data = marshal(api_meta.payload, meta_info_modify_model)
-        modify_status = Meta.modify_column_info(connection_id=connection_id,
-                                                table_name=table_name,
-                                                input_data=request_data)
-        return modify_status, 200
+        request_data = marshal(api_meta.payload, table_info_model)
+        upsert_data = Meta.upsert_table_info(input_data=request_data)
+        return_data = marshal(upsert_data, table_info_model)
+        return return_data, 200

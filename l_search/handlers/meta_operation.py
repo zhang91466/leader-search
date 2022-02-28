@@ -27,10 +27,6 @@ class Meta:
         if not isinstance(input_data, list):
             input_data = [input_data]
 
-        need_upsert_data = []
-        for d in input_data:
-            need_upsert_data.append(cls._del_none_from_dict(input_data=d))
-
         upsert_data = models.DBConnect.upsert(input_data=input_data)
 
         return upsert_data
@@ -55,47 +51,27 @@ class Meta:
         return connection_info
 
     @classmethod
-    def get_table_meta(cls, connection_id, table_name=None):
+    def get_table_info(cls, connection_id, table_name=None):
         """
         获取多个或单个表的列信息
         :param connection_id:
         :param table_name: 筛选表 单个或多个(a|b|c)
         :return:
         """
-
-        get_info = []
-
         table_name_list = models.TableInfo.get_tables(connection_id=connection_id,
                                                       table_name=table_name)
 
-        for table_info in table_name_list:
-            table_detail = models.TableDetail.get_table_info(table_info=table_info)
-
-            get_info.append({"table_name": table_detail.table_name,
-                             "data": table_detail})
-
-        return get_info
+        return table_name_list
 
     @classmethod
-    def modify_column_info(cls, connection_id, table_name, input_data):
+    def upsert_table_info(cls, input_data):
 
         if isinstance(input_data, dict):
             input_data = [input_data]
 
-        tables_info_list = cls.get_table_meta(connection_id=connection_id,
-                                              table_name=table_name)
-        change = 0
-        failed_info = ""
+        upsert_data = models.TableInfo.upsert(input_data=input_data)
 
-        for row in input_data:
-            if any(d["data"].get('id', row["id"]) == row["id"] for d in tables_info_list):
-                modify_result = models.TableDetail.modify(column_id=row["id"], input_data=row)
-                change += 1
-
-                if modify_result is not None:
-                    failed_info = modify_result
-        return {"change_success": change,
-                "change_info": failed_info}
+        return upsert_data
 
     @classmethod
     def add_table_info(cls, connection_info, input_meta):

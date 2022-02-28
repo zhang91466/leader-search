@@ -55,6 +55,11 @@ class DBConnect(db.Model, InsertObject, TimestampMixin):
 
     @classmethod
     def upsert(cls, input_data):
+
+        for d in input_data:
+            if d["id"] is None:
+                d.pop("id")
+
         upsert_result = cls.upsert_base(input_data=input_data,
                                         col_not_in=[cls.id, cls.created_at],
                                         update_index=[cls.id])
@@ -121,15 +126,12 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
         :return:sql query
         """
 
-        meta_query = db.session.query(cls.connection_info.domain,
-                                      cls.connection_info.db_type,
-                                      cls.connection_info.default_db,
-                                      cls.table_name
-                                      )
+        get_tables_query = cls.query
+
         if connection_id:
-            meta_query = meta_query.filter(cls.connection_id == connection_id)
+            get_tables_query = get_tables_query.filter(cls.connection_id == connection_id)
         elif connection_info:
-            meta_query = meta_query.filter(cls.connection == connection_info)
+            get_tables_query = get_tables_query.filter(cls.connection == connection_info)
 
         if table_name:
             logger.debug("查询链接id(%d)下的表信息:%s" % (connection_id, table_name))
@@ -141,17 +143,15 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
 
             table_name_list = [str(x).lower() for x in table_name_list]
 
-            meta_query = meta_query.filter(func.lower(cls.table_name).in_(table_name_list))
+            get_tables_query = get_tables_query.filter(func.lower(cls.table_name).in_(table_name_list))
 
         else:
             logger.debug("查询链接id(%d)下的所有表" % (connection_id))
 
         if need_extract:
-            meta_query = meta_query.filter(cls.need_extract == need_extract)
+            get_tables_query = get_tables_query.filter(cls.need_extract == need_extract)
 
-        meta_query = meta_query.group_by(cls.connection,
-                                         cls.table_name)
-        return meta_query.all()
+        return get_tables_query.all()
 
     @classmethod
     def upsert(cls,
@@ -168,24 +168,14 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
         }]
         :return:
         """
+        for d in input_data:
+            if d["id"] is None:
+                d.pop("id")
 
-        insert_stmt = insert(cls.__table__).values(input_data)
-        update_dict = {x.name: x for x in insert_stmt.inserted}
-        # pg 特定写法
-        upsert_stmt = insert_stmt.on_conflict_do_update(index_elements=["connection_id", "table_name"],
-                                                        set_=update_dict)
-
-        execute_result = db.session.execute(upsert_stmt)
-        db.session.commit()
+        execute_result = cls.upsert_base(input_data=input_data,
+                                         col_not_in=[cls.id, cls.created_at],
+                                         update_index=[cls.id])
         return execute_result
-
-    @classmethod
-    def delete_table(cls, connection_info, table_name):
-        cls.query.filter(and_(cls.connection == connection_info,
-                              func.lower(cls.table_name) == str(table_name).lower()
-                              )).delete(synchronize_session="fetch")
-
-        db.session.commit()
 
 
 class TableDetail(db.Model, InsertObject, TimestampMixin):

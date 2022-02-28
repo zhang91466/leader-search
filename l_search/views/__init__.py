@@ -20,7 +20,7 @@ from .data_meta import (api_meta,
                         ConnectionInfo,
                         ConnectionInfoUpsert,
                         SyncMeta,
-                        MetaInfo)
+                        TableInfo)
 from .tasks_info import (api_task,
                          TaskStatus)
 
@@ -80,11 +80,13 @@ api_meta.add_resource(ConnectionInfoUpsert,
 
 api_meta.add_resource(SyncMeta, "/sync", endpoint="sync_meta")
 
-api_meta.add_resource(MetaInfo,
-                      "/table/<domain>/<db_object_type>/<db_name>",
-                      endpoint="meta_info_get_whole_db_tables",
+api_meta.add_resource(TableInfo,
+                      "/<int:connection_id>/tables/info",
+                      "/<int:connection_id>/<table_name>/info",
+                      endpoint="get_tables",
                       methods=["GET"])
 
-api_meta.add_resource(MetaInfo,
-                      "/table/<domain>/<db_object_type>/<db_name>/<table_name>",
-                      endpoint="meta_info")
+api_meta.add_resource(TableInfo,
+                      "/table/info/upsert",
+                      endpoint="table_info_upsert",
+                      methods=["POST"])
