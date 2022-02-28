@@ -7,6 +7,7 @@
 import functools
 from flask_sqlalchemy import SQLAlchemy
 from l_search.handlers.meta_operation import Meta
+from sqlalchemy.dialects.postgresql import insert
 from l_search.utils.logger import Logger
 from sqlalchemy.event import listens_for
 
@@ -44,6 +45,26 @@ class InsertObject:
             logger.error("Bulk insert error: %s" % e)
 
         return False
+
+    @classmethod
+    def upsert_base(cls, input_data, col_not_in, update_index):
+        insert_stmt = insert(cls.__table__).values(input_data)
+
+        update_columns = {col.name: col for col in insert_stmt.excluded if col.name not in col_not_in}
+
+        # pg 特定写法
+        upsert_stmt = insert_stmt.on_conflict_do_update(index_elements=update_index,
+                                                        set_=update_columns).returning(cls.id)
+
+        execute_result = db.session.execute(upsert_stmt)
+        db.session.commit()
+
+        return_id_list = [row.id for row in execute_result]
+
+        get_return_id_result = cls.query.filter(cls.id.in_(return_id_list)).all()
+
+        return get_return_id_result
+
 
 class TimestampMixin(object):
     updated_at = Column(db.DateTime(True), default=db.func.now(), nullable=False)

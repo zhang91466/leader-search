@@ -8,7 +8,7 @@ from .base import db, Column, InsertObject, TimestampMixin
 import enum
 from .mysql_full_text_search import FullText, FullTextSearch, FullTextMode
 from sqlalchemy import or_, and_, func
-from sqlalchemy.dialects.postgresql import insert
+
 from l_search.utils.logger import Logger
 
 logger = Logger()
@@ -54,97 +54,11 @@ class DBConnect(db.Model, InsertObject, TimestampMixin):
     pwd = Column(db.String(255))
 
     @classmethod
-    def add_row(cls, infos):
-        """
-        新增连接字符串
-        :param infos: {"domain":"", "type":"", "host":"", "port":"", "account":"", "pwd":"", "default_db":""}
-        """
-        basic_key = ["domain", "db_type", "host", "port", "account", "pwd", "default_db", "db_schema"]
-        create_result = None
-        failed_info = ""
-
-        if infos and isinstance(infos, dict):
-            if len(basic_key) == len(infos.keys()):
-                is_key_complete = True
-                for bkey in basic_key:
-                    if bkey not in infos.keys():
-                        failed_info = "数据库连接信息表无法插入新增数据,因key与预设不同"
-                        logger.warn(failed_info)
-                        is_key_complete = False
-                        break
-
-                connection_info = cls.get_by_domain(domain=infos["domain"],
-                                                    db_type=infos["db_type"],
-                                                    default_db=infos["default_db"],
-                                                    db_schema=infos["db_schema"])
-
-                if is_key_complete and len(connection_info) == 0:
-                    create_result = cls.create(**infos)
-
-            else:
-                failed_info = "数据库连接信息表无法插入新增数据,因缺失key"
-                logger.warn(failed_info)
-
-        if create_result is None:
-            return None, "failed %s" % failed_info
-        else:
-            return create_result.id, ""
-    @classmethod
     def upsert(cls, input_data):
-        insert_stmt = insert(cls.__table__).values(input_data)
-
-        set_dict = {}
-
-        for c in insert_stmt.excluded:
-            set_dict[c.name] = c
-
-        set_dict.pop("updated_at")
-        set_dict.pop("created_at")
-        set_dict.pop("id")
-
-        # pg 特定写法
-        upsert_stmt = insert_stmt.on_conflict_do_update(index_elements=["id"],
-                                                        set_=set_dict)
-
-        execute_result = db.session.execute(upsert_stmt)
-        db.session.commit()
-
-        return execute_result
-
-    @classmethod
-    def modify(cls,
-               connection_id,
-               host=None,
-               port=None,
-               account=None,
-               pwd=None,
-               default_db=None,
-               db_schema=None):
-
-        update_column = {}
-
-        exists_data = cls.get_by_domain(connection_id=connection_id, is_all=False)
-
-        if host and host != exists_data.host:
-            update_column["host"] = host
-
-        if port and port != exists_data.port:
-            update_column["port"] = port
-
-        if account and account != exists_data.account:
-            update_column["account"] = account
-
-        if pwd and pwd != exists_data.pwd:
-            update_column["pwd"] = pwd
-
-        if default_db and default_db != exists_data.default_db:
-            update_column["default_db"] = default_db
-
-        if db_schema and db_schema != exists_data.db_schema:
-            update_column["db_schema"] = db_schema
-
-        db.session.query(cls).filter(cls.id == connection_id).update(update_column)
-        db.session.commit()
+        upsert_result = cls.upsert_base(input_data=input_data,
+                                        col_not_in=[cls.id, cls.created_at],
+                                        update_index=[cls.id])
+        return upsert_result
 
     @classmethod
     def get_by_domain(cls,

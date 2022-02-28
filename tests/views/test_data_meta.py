@@ -21,11 +21,13 @@ class TestConnectionInfo(BaseTestCase):
             "domain": "test_mysql222",
             "db_type": "mysql",
             "host": "192.168.1.222",
-            "port": "3306",
+            "port": 3306,
             "account": "root",
             "pwd": "root1",
             "default_db": "airflow"
         }
-        rv = self.make_request("post", "/meta/connection/create", data=query_data)
+        rv = self.make_request("post", "/meta/connection/upsert", data=query_data)
         self.assertEqual(rv.status_code, 200)
-        self.assertEqual(type(rv.json["connection_id"]), int)
+        self.assertEqual(type(rv.json[0]["id"]), int)
+        query_data.pop("pwd")
+        self.assertResponseEqual(query_data, rv.json[0])

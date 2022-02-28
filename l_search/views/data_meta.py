@@ -26,7 +26,6 @@ connection_info_model = api_meta.model("connection_info_schema", connection_info
 
 connection_info_insert_schema = connection_info_schema.copy()
 connection_info_insert_schema["pwd"] = fields.String(description="数据库登入密码")
-connection_info_insert_schema.pop("id")
 connection_info_insert_model = api_meta.model("connection_info_insert_schema", connection_info_insert_schema)
 
 
