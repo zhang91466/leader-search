@@ -116,12 +116,13 @@ table_info_schema = {
 }
 table_info_model = api_meta.model("table_info_schema", table_info_schema)
 
+
 class TableInfo(Resource):
 
     @api_meta.marshal_with(table_info_model)
     def get(self, connection_id, table_name=None):
         """
-        已收集的目标库表结构信息获取
+        已收集的目标库表信息获取
         :param connection_id:
         :param table_name:
         :return:
@@ -133,12 +134,49 @@ class TableInfo(Resource):
     @api_meta.expect(table_info_model)
     def post(self):
         """
-        已收集的目标库表结构信息修改
-        :param connection_id:
-        :param table_name:
+        已收集的目标库表信息修改
         :return:
         """
         request_data = marshal(api_meta.payload, table_info_model)
         upsert_data = Meta.upsert_table_info(input_data=request_data)
         return_data = marshal(upsert_data, table_info_model)
+        return return_data, 200
+
+
+table_detail_schema = {
+    "id": fields.Integer(description="列ID", ),
+    "table_info_id": fields.Integer(description="表ID"),
+    "column_name": fields.String(description="列名"),
+    "column_type": fields.String(description="列类型"),
+    "column_type_length": fields.String(description="列长度"),
+    "column_comment": fields.String(description="列备注"),
+    "column_position": fields.Integer(description="列在表中的顺序"),
+    "is_extract": fields.Boolean(description="列是否抽取", default=True),
+    "is_primary": fields.Boolean(description="列是否是主键", default=False)
+}
+table_detail_model = api_meta.model("table_detail_schema", table_detail_schema)
+
+
+class TableDetail(Resource):
+
+    @api_meta.marshal_with(table_detail_model)
+    def get(self, table_info_id):
+        """
+        已收集的目标库表结构信息获取
+        :param table_info_id:
+        :return:
+        """
+        get_result = Meta.get_table_detail(table_info_id=table_info_id)
+        return_data = marshal(get_result, table_detail_model)
+        return return_data, 200
+
+    @api_meta.expect(table_detail_model)
+    def post(self):
+        """
+        已收集的目标库表结构信息修改
+        :return:
+        """
+        request_data = marshal(api_meta.payload, table_detail_model)
+        upsert_data = Meta.upsert_table_detail(input_data=request_data)
+        return_data = marshal(upsert_data, table_detail_model)
         return return_data, 200

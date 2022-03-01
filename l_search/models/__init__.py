@@ -193,18 +193,20 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
     is_primary = Column(db.Boolean, default=False)
 
     @classmethod
-    def get_table_info(cls,
-                       table_info_id=None,
-                       table_info=None,
-                       column_name=None,
-                       is_extract=None,
-                       table_primary=None
-                       ):
+    def get_table_detail(cls,
+                         table_info_id=None,
+                         table_info=None,
+                         column_name=None,
+                         is_extract=None,
+                         table_primary=None
+                         ):
+        meta_query = cls.query
+
         if table_info_id:
-            meta_query = cls.query.filter(cls.table_info_id == table_info_id)
+            meta_query = meta_query.filter(cls.table_info_id == table_info_id)
 
         if table_info:
-            meta_query = cls.query.filter(cls.table_info == table_info)
+            meta_query = meta_query.filter(cls.table_info == table_info)
 
         if column_name:
             meta_query = meta_query.filter(cls.column_name == column_name)
@@ -218,33 +220,16 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
         return meta_query.all()
 
     @classmethod
-    def update_filter(cls, connection_info, table_name, column_name, filter_value):
-        db.session.query(cls).filter(and_(cls.connection == connection_info,
-                                          cls.table_info == table_name,
-                                          cls.column_name == column_name,
-                                          cls.is_extract_filter == True
-                                          )).update({"filter_default": filter_value})
-        db.session.commit()
+    def upsert(cls, input_data):
 
-    @classmethod
-    def modify(cls, column_id, input_data):
+        for d in input_data:
+            if d["id"] is None:
+                d.pop("id")
 
-        update_column = {}
-
-        try:
-            if "column_comment" in input_data:
-                update_column["column_comment"] = input_data["column_comment"]
-
-            if "is_extract" in input_data and isinstance(input_data["is_extract"], bool):
-                update_column["is_extract"] = input_data["is_extract"]
-
-            if "is_primary" in input_data and isinstance(input_data["is_primary"], bool):
-                update_column["is_primary"] = input_data["is_primary"]
-
-            db.session.query(cls).filter(cls.id == column_id).update(update_column)
-            db.session.commit()
-        except Exception as e:
-            return e
+        execute_result = cls.upsert_base(input_data=input_data,
+                                         col_not_in=[cls.id, cls.created_at],
+                                         update_index=[cls.id])
+        return execute_result
 
 
 class FullTextIndex(db.Model, InsertObject, FullText):

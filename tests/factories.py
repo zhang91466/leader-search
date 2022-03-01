@@ -56,7 +56,8 @@ class Factory:
 
     def create_db_connect(self):
         create_data = db_connection_factory.create()
-        result_data = {"domain": create_data.domain,
+        result_data = {"id": create_data.id,
+                       "domain": create_data.domain,
                        "db_type": create_data.db_type,
                        "host": create_data.host,
                        "port": create_data.port,
@@ -70,7 +71,8 @@ class Factory:
         table_info_data.kwargs["connection_id"] = create_connection.id
         create_table_info = table_info_data.create()
 
-        result_data = {"connection_id": create_table_info.connection_id,
+        result_data = {"id": create_table_info.id,
+                       "connection_id": create_table_info.connection_id,
                        "table_name": create_table_info.table_name,
                        "table_primary_col": create_table_info.table_primary_col,
                        "table_primary_col_is_int": create_table_info.table_primary_col_is_int,
@@ -80,3 +82,17 @@ class Factory:
                        "latest_extract_date": create_table_info.latest_extract_date
                        }
         return result_data
+
+    def create_table_detail(self, column_info_list):
+        create_table_info = self.create_table_info()
+
+        result = []
+
+        for i in column_info_list:
+            column_new_data = ModelFactory(model=models.TableDetail, **i)
+            column_new_data.kwargs["table_info_id"] = create_table_info["id"]
+            column_new_data.create()
+            column_new_data_dict = column_new_data.kwargs
+            result.append(column_new_data_dict)
+
+        return result

@@ -20,7 +20,8 @@ from .data_meta import (api_meta,
                         ConnectionInfo,
                         ConnectionInfoUpsert,
                         SyncMeta,
-                        TableInfo)
+                        TableInfo,
+                        TableDetail)
 from .tasks_info import (api_task,
                          TaskStatus)
 
@@ -89,4 +90,14 @@ api_meta.add_resource(TableInfo,
 api_meta.add_resource(TableInfo,
                       "/table/info/upsert",
                       endpoint="table_info_upsert",
+                      methods=["POST"])
+
+api_meta.add_resource(TableDetail,
+                      "/<table_info_id>/detail",
+                      endpoint="get_table_detail",
+                      methods=["GET"])
+
+api_meta.add_resource(TableDetail,
+                      "/table/detail/upsert",
+                      endpoint="table_detail_upsert",
                       methods=["POST"])

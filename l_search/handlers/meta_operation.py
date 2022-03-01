@@ -74,6 +74,27 @@ class Meta:
         return upsert_data
 
     @classmethod
+    def get_table_detail(cls, table_info_id):
+        """
+        获取多个或单个表的列信息
+        :param table_info_id:
+        :return:
+        """
+        table_name_list = models.TableDetail.get_table_detail(table_info_id=table_info_id)
+
+        return table_name_list
+
+    @classmethod
+    def upsert_table_detail(cls, input_data):
+
+        if isinstance(input_data, dict):
+            input_data = [input_data]
+
+        upsert_data = models.TableDetail.upsert(input_data=input_data)
+
+        return upsert_data
+
+    @classmethod
     def add_table_info(cls, connection_info, input_meta):
         """
         一个表的列信息
