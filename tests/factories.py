@@ -32,6 +32,18 @@ class ModelFactory:
         return obj
 
 
+mssql_connection_factory = ModelFactory(
+    model=models.DBConnect,
+    domain="l_search_test",
+    db_type="mssql",
+    host="192.168.1.31",
+    port="2433",
+    account="sa",
+    pwd="m?~9nfhqZR%TXzY",
+    default_db="LM_XS_ARC_WATER"
+)
+
+
 db_connection_factory = ModelFactory(
     model=models.DBConnect,
     domain="l_search_test",
@@ -53,6 +65,10 @@ db_table_info_factory = ModelFactory(
 
 
 class Factory:
+
+    def create_mssql_connect(self):
+        create_date = mssql_connection_factory.create()
+        return create_date
 
     def create_db_connect(self):
         create_data = db_connection_factory.create()

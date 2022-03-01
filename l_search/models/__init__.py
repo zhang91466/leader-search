@@ -36,6 +36,7 @@ class DBObjectType(enum.Enum):
     postgresql = "postgresql"
     greenplum = "greenplum"
     mariadb = "mariadb"
+    mssql = "mssql"
 
 
 class DBConnect(db.Model, InsertObject, TimestampMixin):

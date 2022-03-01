@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 
+from l_search import settings
 from l_search import models
 from l_search.handlers.meta_operation import Meta
 from l_search.utils.logger import Logger
@@ -17,6 +18,8 @@ logger = Logger()
 class DBSession:
     def __init__(self, connection_info):
         self.connect_info = connection_info
+
+
 
         if connection_info.db_type in [models.DBObjectType("greenplum"), models.DBObjectType("postgresql")]:
             # postgresql: // scott: tiger @ localhost:5432 / mydatabase
@@ -32,6 +35,11 @@ class DBSession:
             # mysql: // scott: tiger @ localhost:5432 / mydatabase?charset=utf8
             connect_prefix = "mysql"
             remark = "?charset=utf8"
+
+        elif connection_info.db_type in [models.DBObjectType("mssql")]:
+            # mssql+pymssql://sa:m?~9nfhqZR%TXzY@192.168.1.31:2433/LM_XS_ARC_WATER
+            connect_prefix = "mssql+pymssql"
+            remark = ""
 
         engine_connect_string = '%s://%s:%s@%s:%s/%s%s' % (connect_prefix,
                                                            self.connect_info.account,
@@ -70,31 +78,27 @@ class DBSession:
 
 
 class MetaDetector:
-    def __init__(self, domain, db_type, default_db, db_schema=None):
+    def __init__(self, connection_info):
 
-        self.connection_info = models.DBConnect.get_by_domain(domain=domain,
-                                                              db_type=db_type,
-                                                              default_db=default_db,
-                                                              db_schema=db_schema,
-                                                              is_all=False)
-
+        self.connection_info = connection_info
         self.session = DBSession(connection_info=self.connection_info)
         logger.info("开始连接目标数据库")
         self.source_meta_data = MetaData()
         self.source_meta_data.reflect(bind=self.session.engine)
         logger.info("目标数据库连接完成")
 
-        if db_type in ["postgresql", "greenplum"]:
-            if db_schema is None:
-                db_schema = "public"
+        if  connection_info.db_type in [models.DBObjectType("greenplum"), models.DBObjectType("postgresql")]:
+            if connection_info.db_schema is None:
+                self.db_schema = "public"
             else:
-                self.source_meta_data.reflect(schema=db_schema)
-            self.db_schema = db_schema
+                self.db_schema = connection_info.db_schema
+
+            self.source_meta_data.reflect(schema=connection_info.db_schema)
 
     @staticmethod
     def is_extract_filter(column_data):
         result = False
-        if column_data.name == "update_ts":
+        if column_data.name in settings.EXTRACT_FILTER_COLUMN_NAME:
             result = True
         return result
 

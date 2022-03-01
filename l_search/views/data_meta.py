@@ -60,36 +60,6 @@ class ConnectionInfo(Resource):
         return marshal(connection_info, connection_info_model), 200
 
 
-sync_meta_schema = {
-    "domain": fields.String(description="系统域"),
-    "db_object_type": fields.String(description="数据库类型", enum=models.DBObjectType._member_names_),
-    "db_name": fields.String(description="数据库名称"),
-    "table_list": fields.List(fields.String(description="需要抽取表名称清单", default=None)),
-    "table_name_prefix": fields.String(description="需要抽取表名称前缀", default=None)
-}
-
-sync_meta_model = api_meta.model("sycn_meta_schema", sync_meta_schema)
-
-
-class SyncMeta(Resource):
-
-    @api_meta.expect(sync_meta_model)
-    def post(self):
-        """
-        异步 -- 同步目标库表结构信息
-        :return:
-        """
-        request_data = marshal(api_meta.payload, sync_meta_model)
-
-        task = sync_table_meta.delay(domain=request_data["domain"],
-                                     db_object_type=models.DBObjectType[request_data["db_object_type"]].value,
-                                     db_name=request_data["db_name"],
-                                     table_list=request_data["table_list"],
-                                     table_name_prefix=request_data["table_name_prefix"]
-                                     )
-        return {"task_id": task.id}, 200
-
-
 meta_info_schema = {
     "id": fields.Integer(description="列id"),
     "column_name": fields.String(description="列名"),
@@ -180,3 +150,33 @@ class TableDetail(Resource):
         upsert_data = Meta.upsert_table_detail(input_data=request_data)
         return_data = marshal(upsert_data, table_detail_model)
         return return_data, 200
+
+
+sync_meta_schema = {
+    "domain": fields.String(description="系统域"),
+    "db_object_type": fields.String(description="数据库类型", enum=models.DBObjectType._member_names_),
+    "db_name": fields.String(description="数据库名称"),
+    "table_list": fields.List(fields.String(description="需要抽取表名称清单", default=None)),
+    "table_name_prefix": fields.String(description="需要抽取表名称前缀", default=None)
+}
+
+sync_meta_model = api_meta.model("sycn_meta_schema", sync_meta_schema)
+
+
+class SyncMeta(Resource):
+
+    @api_meta.expect(sync_meta_model)
+    def post(self):
+        """
+        异步 -- 同步目标库表结构信息
+        :return:
+        """
+        request_data = marshal(api_meta.payload, sync_meta_model)
+
+        task = sync_table_meta.delay(domain=request_data["domain"],
+                                     db_object_type=models.DBObjectType[request_data["db_object_type"]].value,
+                                     db_name=request_data["db_name"],
+                                     table_list=request_data["table_list"],
+                                     table_name_prefix=request_data["table_name_prefix"]
+                                     )
+        return {"task_id": task.id}, 200
