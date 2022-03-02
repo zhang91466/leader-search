@@ -106,47 +106,19 @@ class Meta:
                             "column_position":"",
                             }],
                             table_name:xxx
-                            table_primary_id:xx
-                            table_primary_id_is_int:Ture,
                             table_extract_col:xxx
         """
+        logger.debug("Upsert table %s schema" % input_meta["table_name"])
         table_detail_insert_data = input_meta.pop("columns")
 
         input_meta["connection_id"] = connection_info.id
         table_info = models.TableInfo.upsert(input_data=input_meta)
 
-        required_keys = ["column_name",
-                         "column_type",
-                         "column_type_length",
-                         "column_comment",
-                         "column_position"]
+        for col_info in table_detail_insert_data:
+            col_info["table_info_id"] = table_info[0].id
 
-        input_meta_keys = table_detail_insert_data[0].keys()
+        insert_row = models.TableDetail.upsert(input_data=table_detail_insert_data)
 
-        check_keys = list(set(required_keys) - set(input_meta_keys))
-
-        insert_row_count = 0
-        # 确保key都存在
-        if len(check_keys) == 0:
-
-            get_table_info = models.TableDetail.get_table_info(table_info=table_info)
-            check = False
-
-            if get_table_info:
-
-                get_table_info_list = [u.__dict__ for u in get_table_info]
-                table_detail_insert_data_check = table_detail_insert_data.copy()
-
-                for i in range(len(get_table_info_list)):
-                    if get_table_info_list[i]["column_name"] == table_detail_insert_data_check[i]["column_name"]:
-                        if get_table_info_list[i]["column_position"] == table_detail_insert_data_check[i]["column_position"]:
-                            table_detail_insert_data.remove(table_detail_insert_data_check[i])
-                        else:
-                            failed_info = "同步后（%s）的列信息顺序与已记录的表信息条数，无法更新" % input_meta["table_name"]
-                            logger.debug(failed_info)
-                            return failed_info
-
-            if len(table_detail_insert_data) > 0:
-                insert_row_count = models.TableDetail.bulk_insert(input_data=table_detail_insert_data)
-
-        return insert_row_count
+        return {"table_info_id": table_info[0].id,
+                "table_name": input_meta["table_name"],
+                "column_count": len(insert_row)}

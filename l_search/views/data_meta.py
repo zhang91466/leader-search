@@ -77,11 +77,8 @@ table_info_schema = {
     "id": fields.Integer(description="表ID", ),
     "connection_id": fields.Integer(description="数据库连接ID"),
     "table_name": fields.String(description="表名"),
-    "table_primary_col": fields.String(description="表的主键列名"),
-    "table_primary_col_is_int": fields.Boolean(description="表的主键列是否是int类型"),
     "table_extract_col": fields.String(description="表用于抽取的列名"),
     "need_extract": fields.Boolean(description="表是否需要抽取"),
-    "latest_table_primary_id": fields.String(description="记录最新的主键id"),
     "latest_extract_date": fields.String(description="记录最新的抽取时间")
 }
 table_info_model = api_meta.model("table_info_schema", table_info_schema)

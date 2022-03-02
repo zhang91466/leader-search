@@ -54,6 +54,12 @@ class DBConnect(db.Model, InsertObject, TimestampMixin):
     account = Column(db.String(255))
     pwd = Column(db.String(255))
 
+    def print_name(self):
+        return "%s %s Database (%s) under %s" % (self.db_type,
+                                                 self.host,
+                                                 self.default_db,
+                                                 self.domain)
+
     @classmethod
     def upsert(cls, input_data):
 
@@ -105,11 +111,8 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
     connection_id = Column(db.Integer, db.ForeignKey("db_connect_info.id"))
     connection = db.relationship(DBConnect, backref="table_info_db_connect")
     table_name = Column(db.String(500))
-    table_primary_col = Column(db.String(150), nullable=True)
-    table_primary_col_is_int = Column(db.Boolean, default=True)
     table_extract_col = Column(db.String(150), nullable=True)
     need_extract = Column(db.Boolean, default=False)
-    latest_table_primary_id = Column(db.String(150), nullable=True)
     latest_extract_date = Column(db.DateTime(), nullable=True)
 
     @classmethod
@@ -163,14 +166,15 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
         :param input_data:
         [{connection_id:1,
         table_name:xxx,
-        table_primary_col:xxx,
-        table_primary_col_is_int:xxx,
         table_extract_col:xxx
         }]
         :return:
         """
+        if isinstance(input_data, dict):
+            input_data = [input_data]
+
         for d in input_data:
-            if d["id"] is None:
+            if "id" in d and d["id"] is None :
                 d.pop("id")
 
         execute_result = cls.upsert_base(input_data=input_data,
@@ -223,8 +227,11 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
     @classmethod
     def upsert(cls, input_data):
 
+        if isinstance(input_data, dict):
+            input_data = [input_data]
+
         for d in input_data:
-            if d["id"] is None:
+            if "id" in d and d["id"] is None:
                 d.pop("id")
 
         execute_result = cls.upsert_base(input_data=input_data,

@@ -19,81 +19,43 @@ class DBSession:
     def __init__(self, connection_info):
         self.connect_info = connection_info
 
+        if self.connect_info.db_type in settings.SOURCE_DB_CONNECTION_URL:
+            get_part_of_connect_string = settings.SOURCE_DB_CONNECTION_URL[self.connect_info.db_type]
+        else:
+            raise "%s not support" % self.connect_info.print_name()
 
-
-        if connection_info.db_type in [models.DBObjectType("greenplum"), models.DBObjectType("postgresql")]:
-            # postgresql: // scott: tiger @ localhost:5432 / mydatabase
-            connect_prefix = "postgresql+psycopg2"
-            remark = ""
-
-        elif connection_info.db_type in [models.DBObjectType("mysql")]:
-            # mysql: // scott: tiger @ localhost:5432 / mydatabase?charset=utf8
-            connect_prefix = "mysql"
-            remark = "?character_set_server=utf8mb4"
-
-        elif connection_info.db_type in [models.DBObjectType("mariadb")]:
-            # mysql: // scott: tiger @ localhost:5432 / mydatabase?charset=utf8
-            connect_prefix = "mysql"
-            remark = "?charset=utf8"
-
-        elif connection_info.db_type in [models.DBObjectType("mssql")]:
-            # mssql+pymssql://sa:m?~9nfhqZR%TXzY@192.168.1.31:2433/LM_XS_ARC_WATER
-            connect_prefix = "mssql+pymssql"
-            remark = ""
-
-        engine_connect_string = '%s://%s:%s@%s:%s/%s%s' % (connect_prefix,
+        engine_connect_string = '%s://%s:%s@%s:%s/%s%s' % (get_part_of_connect_string["connect_prefix"],
                                                            self.connect_info.account,
                                                            self.connect_info.pwd,
                                                            self.connect_info.host,
                                                            self.connect_info.port,
                                                            self.connect_info.default_db,
-                                                           remark)
+                                                           get_part_of_connect_string["remark"])
 
         self.engine = create_engine(engine_connect_string)
-        self.sessions = None
-
-        self.new_session = Session(self.engine, future=True)
-
-    # 1.0的老办法进行sql查询
-
-    def connect_init(self):
-        connection_session = sessionmaker(bind=self.engine)
-        self.sessions = connection_session()
-
-    @contextmanager
-    def session_maker(self):
-        session = self.sessions
-        try:
-            yield session
-            session.commit()
-        except:
-            session.rollback()
-            raise
-        finally:
-            session.close()
-
-    # 2.0的新版本进行sql查询（1.4开始支持）
-    def get_session(self):
-        return self.new_session
+        self.session = Session(self.engine, future=True)
 
 
 class MetaDetector:
     def __init__(self, connection_info):
 
         self.connection_info = connection_info
-        self.session = DBSession(connection_info=self.connection_info)
+        self.connection = DBSession(connection_info=self.connection_info)
         logger.info("开始连接目标数据库")
         self.source_meta_data = MetaData()
-        self.source_meta_data.reflect(bind=self.session.engine)
-        logger.info("目标数据库连接完成")
 
-        if  connection_info.db_type in [models.DBObjectType("greenplum"), models.DBObjectType("postgresql")]:
+        if connection_info.db_type in [models.DBObjectType("greenplum").value,
+                                       models.DBObjectType("postgresql").value]:
             if connection_info.db_schema is None:
                 self.db_schema = "public"
             else:
                 self.db_schema = connection_info.db_schema
 
-            self.source_meta_data.reflect(schema=connection_info.db_schema)
+            self.source_meta_data.reflect(bind=self.connection.engine, schema=connection_info.db_schema)
+        else:
+            self.source_meta_data.reflect(bind=self.connection.engine)
+
+        logger.info("目标数据库连接完成")
 
     @staticmethod
     def is_extract_filter(column_data):
@@ -106,14 +68,20 @@ class MetaDetector:
     def init_column_type(column_data):
         column_type = ""
         column_length = ""
-        if not isinstance(column_data.db_type, NullType):
-            try:
-                column_type = str(re.sub("(\().*?(\))", "", str(column_data.db_type))).lower()
-                column_length = str(column_data.db_type.length)
-            except:
-                pass
+
+        if str(column_data.name).lower() in settings.GEO_COLUMN_NAME:
+            column_type = "geometry"
+            column_length = ""
         else:
-            column_type = "text"
+            if not isinstance(column_data.type, NullType):
+                try:
+                    column_type = str(column_data.type).split(" ")[0]
+                    column_type = str(re.sub("(\().*?(\))", "", column_type)).lower()
+                    column_length = str(column_data.type.length)
+                except:
+                    pass
+            else:
+                column_type = "text"
 
         return column_type, column_length
 
@@ -134,16 +102,10 @@ class MetaDetector:
                 "column_type_length": column_type_length,
                 "column_comment": c.comment,
                 "column_position": i,
+                "is_primary": c.primary_key
             }
             i += 1
             columns_info_list.append(column_info)
-
-            if c.primary_key:
-                column_info["is_primary"] = True
-                result["table_primary_id"] = c.name
-
-                if column_type not in ["integer"]:
-                    result["table_primary_id_is_int"] = False
 
             if self.is_extract_filter(c):
                 result["table_extract_col"] = c.name
@@ -161,14 +123,14 @@ class MetaDetector:
         """
 
         table_detail_info = []
-        list_tables = self.source_meta_data.table
+        list_tables = self.source_meta_data.tables
 
         if tables is None and table_name_prefix is None:
             is_all = True
         else:
             is_all = False
 
-        result = {}
+        result = []
 
         for t in list_tables:
             if is_all:
@@ -179,8 +141,8 @@ class MetaDetector:
                 elif table_name_prefix and t.startswith(table_name_prefix):
                     table_detail_info = self.detector_table(list_tables[t])
 
-            result[list_tables[t].name] = Meta.add_table_info(connection_info=self.connection_info,
-                                                              input_meta=table_detail_info)
+            result.append(Meta.add_table_info(connection_info=self.connection_info,
+                                              input_meta=table_detail_info))
 
         return result
 
@@ -189,12 +151,11 @@ class MetaDetector:
         遍历meta里面指定的表
 	    查看结构是否存在问题
         """
-
         store_table_info = models.TableInfo.get_tables(connection_info=self.connection_info)
         list_tables = [x.table_info for x in store_table_info]
         return self.detector_schema(tables=list_tables)
 
     def execute_select_sql(self, sql_text):
-        session = self.session.get_session()
+        session = self.connection.session
         execute_data = session.execute(sql_text).all()
         return [dict(row) for row in execute_data]

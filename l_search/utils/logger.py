@@ -69,10 +69,10 @@ class Logger:
         # fileHandler.setLevel(logging.INFO)
         streamHandler = logging.StreamHandler()
         streamHandler.setFormatter(formatter)
-        streamHandler.setLevel(logging.INFO)
+        streamHandler.setLevel(logging.DEBUG)
         # streamHandler.setLevel(logging.WARN)
 
-        self.__logging.setLevel(logging.INFO)
+        self.__logging.setLevel(logging.DEBUG)
         # self.__logging.addHandler(fileHandler)
         self.__logging.addHandler(streamHandler)
 

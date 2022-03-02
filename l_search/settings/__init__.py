@@ -19,5 +19,17 @@ STRING_COLUMN_TYPE = ["varchar", "string", "text", "char"]
 
 EXTRACT_FILTER_COLUMN_NAME = ["update_ts"]
 
-SOURCE_DB_CONNECTION_URL = {DBObjectType("greenplum"): {"connect_prefix": "postgresql+psycopg2",
-                                                        "remark": ""}}
+GEO_COLUMN_NAME = ["shape"]
+
+SOURCE_DB_CONNECTION_URL = {DBObjectType("greenplum").value: {"connect_prefix": "postgresql+psycopg2",
+                                                              "remark": ""},
+                            DBObjectType("postgresql").value: {"connect_prefix": "postgresql+psycopg2",
+                                                               "remark": ""},
+                            DBObjectType("mysql").value: {"connect_prefix": "mysql",
+                                                          "remark": "?character_set_server=utf8mb4"},
+                            DBObjectType("mysql").value: {"connect_prefix": "mysql",
+                                                          "remark": "?charset=utf8"},
+                            DBObjectType("mssql").value: {"connect_prefix": "mssql+pymssql",
+                                                          "remark": ""},
+                            }
+
