@@ -4,8 +4,10 @@
 @author:zhangwei
 @file:__init__.py
 """
-from .base import db, Column, InsertObject, TimestampMixin
+
 import enum
+import hashlib
+from .base import db, Column, InsertObject, TimestampMixin
 from .mysql_full_text_search import FullText, FullTextSearch, FullTextMode
 from sqlalchemy import or_, and_, func
 
@@ -63,12 +65,15 @@ class DBConnect(db.Model, InsertObject, TimestampMixin):
     @classmethod
     def upsert(cls, input_data):
 
+        if isinstance(input_data, dict):
+            input_data = [input_data]
+
         for d in input_data:
-            if d["id"] is None:
+            if "id" in d and d["id"] is None:
                 d.pop("id")
 
         upsert_result = cls.upsert_base(input_data=input_data,
-                                        col_not_in=[cls.id, cls.created_at],
+                                        col_not_in=[cls.id.key, cls.created_at.key],
                                         update_index=[cls.id])
         return upsert_result
 
@@ -104,16 +109,25 @@ class DBConnect(db.Model, InsertObject, TimestampMixin):
             return get_query.first()
 
 
+def table_info_primary_id_value(context):
+    return hashlib.md5(str(
+        str(context.get_current_parameters()["connection_id"]) + context.get_current_parameters()["table_name"]).encode(
+        'utf-8')).hexdigest()
+
+
 class TableInfo(db.Model, InsertObject, TimestampMixin):
     __tablename__ = "table_info"
 
-    id = Column(db.Integer, primary_key=True, autoincrement=True)
+    id = Column(db.String(50), primary_key=True, default=table_info_primary_id_value)
     connection_id = Column(db.Integer, db.ForeignKey("db_connect_info.id"))
     connection = db.relationship(DBConnect, backref="table_info_db_connect")
     table_name = Column(db.String(500))
     table_extract_col = Column(db.String(150), nullable=True)
     need_extract = Column(db.Boolean, default=False)
     latest_extract_date = Column(db.DateTime(), nullable=True)
+
+    __table_args__ = (
+    db.Index("table_info_connection_id_table_name_index", "connection_id", "table_name", unique=True),)
 
     @classmethod
     def get_tables(cls,
@@ -174,20 +188,26 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
             input_data = [input_data]
 
         for d in input_data:
-            if "id" in d and d["id"] is None :
+            if "id" in d and d["id"] is None:
                 d.pop("id")
 
         execute_result = cls.upsert_base(input_data=input_data,
-                                         col_not_in=[cls.id, cls.created_at],
-                                         update_index=[cls.id])
+                                         col_not_in=[cls.id.key, cls.created_at.key],
+                                         update_index=[cls.connection_id, cls.table_name])
         return execute_result
+
+
+def table_detail_primary_id_value(context):
+    return hashlib.md5(str(
+        str(context.get_current_parameters()["table_info_id"]) + context.get_current_parameters()["column_name"]).encode(
+        'utf-8')).hexdigest()
 
 
 class TableDetail(db.Model, InsertObject, TimestampMixin):
     # 表的名字:元数据信息表
     __tablename__ = "table_detail"
-    id = Column(db.Integer, primary_key=True, autoincrement=True)
-    table_info_id = Column(db.Integer, db.ForeignKey("table_info.id"))
+    id = Column(db.String(50), primary_key=True, default=table_detail_primary_id_value)
+    table_info_id = Column(db.String(50), db.ForeignKey("table_info.id"))
     table_info = db.relationship(TableInfo, backref="table_detail_table_info")
     column_name = Column(db.String(255))
     column_type = Column(db.String(255))
@@ -196,6 +216,9 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
     column_position = Column(db.Integer)
     is_extract = Column(db.Boolean, default=True)
     is_primary = Column(db.Boolean, default=False)
+
+    __table_args__ = (
+        db.Index("table_detail_table_info_id_column_name_index", "table_info_id", "column_name", unique=True),)
 
     @classmethod
     def get_table_detail(cls,
@@ -235,8 +258,8 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
                 d.pop("id")
 
         execute_result = cls.upsert_base(input_data=input_data,
-                                         col_not_in=[cls.id, cls.created_at],
-                                         update_index=[cls.id])
+                                         col_not_in=[cls.id.key, cls.created_at.key],
+                                         update_index=[cls.table_info_id, cls.column_name])
         return execute_result
 
 

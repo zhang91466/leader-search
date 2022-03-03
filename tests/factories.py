@@ -58,8 +58,6 @@ db_connection_factory = ModelFactory(
 db_table_info_factory = ModelFactory(
     model=models.TableInfo,
     table_name="test_table",
-    table_primary_col="id",
-    table_primary_col_is_int=True,
     table_extract_col="update_ts"
 )
 
@@ -90,11 +88,8 @@ class Factory:
         result_data = {"id": create_table_info.id,
                        "connection_id": create_table_info.connection_id,
                        "table_name": create_table_info.table_name,
-                       "table_primary_col": create_table_info.table_primary_col,
-                       "table_primary_col_is_int": create_table_info.table_primary_col_is_int,
                        "table_extract_col": create_table_info.table_extract_col,
                        "need_extract": create_table_info.need_extract,
-                       "latest_table_primary_id": create_table_info.latest_table_primary_id,
                        "latest_extract_date": create_table_info.latest_extract_date
                        }
         return result_data

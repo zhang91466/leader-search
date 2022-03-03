@@ -46,14 +46,12 @@ class TestTableInfo(BaseTestCase):
         query_data = {
             "connection_id": create_connection["id"],
             "table_name": "test_insert_table",
-            "table_primary_col": "id",
-            "table_primary_col_is_int": True,
             "table_extract_col": "update_time",
             "need_extract": True
         }
         rv = self.make_request("post", "/meta/table/info/upsert", data=query_data)
         self.assertEqual(rv.status_code, 200)
-        self.assertEqual(type(rv.json[0]["id"]), int)
+        self.assertEqual(type(rv.json[0]["id"]), str)
         self.assertResponseEqual(query_data, rv.json[0])
 
 
@@ -74,7 +72,7 @@ class TestTableDetail(BaseTestCase):
 
     def test_get_table_detail(self):
         query = self.factory.create_table_detail(column_info_list=self.test_data)
-        rv = self.make_request("get", "/meta/%d/detail" % (query[0]["table_info_id"]))
+        rv = self.make_request("get", "/meta/%s/detail" % (query[0]["table_info_id"]))
 
         self.assertEqual(len(query), len(rv.json))
         self.assertResponseEqual(query[0], rv.json[0])
@@ -87,5 +85,5 @@ class TestTableDetail(BaseTestCase):
 
         rv = self.make_request("post", "/meta/table/detail/upsert", data=self.test_data)
         self.assertEqual(rv.status_code, 200)
-        self.assertEqual(type(rv.json[0]["id"]), int)
+        self.assertEqual(type(rv.json[0]["id"]), str)
         self.assertResponseEqual(self.test_data[1], rv.json[1])

@@ -60,21 +60,9 @@ class ConnectionInfo(Resource):
         return marshal(connection_info, connection_info_model), 200
 
 
-meta_info_schema = {
-    "id": fields.Integer(description="列id"),
-    "column_name": fields.String(description="列名"),
-    "column_type": fields.String(description="列格式"),
-    "column_type_length": fields.String(description="字段长度"),
-    "column_comment": fields.String(description="列备注"),
-    "is_primary": fields.Boolean(description="该列是否是主键"),
-    "is_extract": fields.Boolean(description="该列是否要抽取")
-}
-
-meta_info_model = api_meta.model("meta_info_schema", meta_info_schema)
-
 # fields.List(fields.Nested(meta_info_model))})
 table_info_schema = {
-    "id": fields.Integer(description="表ID", ),
+    "id": fields.String(description="表ID", ),
     "connection_id": fields.Integer(description="数据库连接ID"),
     "table_name": fields.String(description="表名"),
     "table_extract_col": fields.String(description="表用于抽取的列名"),
@@ -111,8 +99,8 @@ class TableInfo(Resource):
 
 
 table_detail_schema = {
-    "id": fields.Integer(description="列ID", ),
-    "table_info_id": fields.Integer(description="表ID"),
+    "id": fields.String(description="列ID", ),
+    "table_info_id": fields.String(description="表ID"),
     "column_name": fields.String(description="列名"),
     "column_type": fields.String(description="列类型"),
     "column_type_length": fields.String(description="列长度"),
@@ -153,6 +141,7 @@ sync_meta_schema = {
     "domain": fields.String(description="系统域"),
     "db_object_type": fields.String(description="数据库类型", enum=models.DBObjectType._member_names_),
     "db_name": fields.String(description="数据库名称"),
+    "db_schema": fields.String(description="数据库名称 针对pg"),
     "table_list": fields.List(fields.String(description="需要抽取表名称清单", default=None)),
     "table_name_prefix": fields.String(description="需要抽取表名称前缀", default=None)
 }
@@ -170,10 +159,21 @@ class SyncMeta(Resource):
         """
         request_data = marshal(api_meta.payload, sync_meta_model)
 
-        task = sync_table_meta.delay(domain=request_data["domain"],
-                                     db_object_type=models.DBObjectType[request_data["db_object_type"]].value,
-                                     db_name=request_data["db_name"],
-                                     table_list=request_data["table_list"],
-                                     table_name_prefix=request_data["table_name_prefix"]
-                                     )
-        return {"task_id": task.id}, 200
+        # task = sync_table_meta.delay(domain=request_data["domain"],
+        #                              db_object_type=models.DBObjectType[request_data["db_object_type"]].value,
+        #                              db_name=request_data["db_name"],
+
+        # db_schema = request_data["db_schema"],
+        #                              table_list=request_data["table_list"],
+        #                              table_name_prefix=request_data["table_name_prefix"]
+        #                              )
+        # return {"task_id": task.id}, 200
+
+        task = sync_table_meta(domain=request_data["domain"],
+                               db_object_type=models.DBObjectType[request_data["db_object_type"]].value,
+                               db_name=request_data["db_name"],
+                               db_schema=request_data["db_schema"],
+                               table_list=request_data["table_list"],
+                               table_name_prefix=request_data["table_name_prefix"]
+                               )
+        return task, 200
