@@ -12,7 +12,7 @@ from l_search import models
 class TestMetaDetector(BaseTestCase):
     def setUp(self):
         super().setUp()
-        connection_info = self.factory.create_mssql_connect()
+        connection_info = self.factory.create_db_connect(return_dict=False)
         self.meta_detector = MetaDetector(connection_info=connection_info)
 
     def test_detector_schema(self):

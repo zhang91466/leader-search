@@ -5,6 +5,7 @@
 @file:test_data_meta
 """
 from tests import BaseTestCase
+from tests.factories import db_table_detail_dict
 
 
 class TestConnectionInfo(BaseTestCase):
@@ -56,22 +57,9 @@ class TestTableInfo(BaseTestCase):
 
 
 class TestTableDetail(BaseTestCase):
-    test_data = [{
-            "column_name": "id",
-            "column_type": "integer",
-            "column_type_length": "4",
-            "column_position": 1,
-            "is_primary": True
-        },
-        {
-            "column_name": "test_col_1",
-            "column_type": "varhcar",
-            "column_type_length": "155",
-            "column_position": 2
-        }]
 
     def test_get_table_detail(self):
-        query = self.factory.create_table_detail(column_info_list=self.test_data)
+        query = self.factory.create_table_detail()
         rv = self.make_request("get", "/meta/%s/detail" % (query[0]["table_info_id"]))
 
         self.assertEqual(len(query), len(rv.json))
@@ -80,10 +68,10 @@ class TestTableDetail(BaseTestCase):
     def test_upsert_table_detail(self):
         create_table_info = self.factory.create_table_info()
 
-        for d in self.test_data:
+        for d in db_table_detail_dict:
             d["table_info_id"] = create_table_info["id"]
 
-        rv = self.make_request("post", "/meta/table/detail/upsert", data=self.test_data)
+        rv = self.make_request("post", "/meta/table/detail/upsert", data=db_table_detail_dict)
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(type(rv.json[0]["id"]), str)
-        self.assertResponseEqual(self.test_data[1], rv.json[1])
+        self.assertResponseEqual(db_table_detail_dict[1], rv.json[1])

@@ -4,53 +4,76 @@
 @author:
 @file:extract_table_models
 """
+from l_search import models
 from l_search.models.base import db
 from l_search.utils.logger import Logger
+from l_search import settings
+
+DONOT_CREATE_COLUMN = []
 
 logger = Logger()
-
-COLUMN_TYPE_MAPPING = {"postgresql": {"varchar": "varchar",
-                                      "integer": "int",
-                                      "numeric": "numeric",
-                                      "text": "text",
-                                      "timestamp": "timestamp"
-                                      }}
-
-DONOT_CREATE_COLUMN = ["geom"]
 
 
 class TableOperate:
 
     @classmethod
-    def create(cls, table_name, meta_data):
+    def create_table(cls, table_info):
+        """
+        创建表
+        :param table_info: object TableInfo query result
+        :return:
+        """
+
+        table_name = "%s.%s" % (settings.ODS_SCHEMA_NAME, table_info.table_name)
         logger.debug("table %s start create" % table_name)
+
+        table_detail = models.TableDetail.get_table_detail(table_info=table_info,
+                                                           is_extract=True)
+
         create_stat = """create table if not exists %(table_name)s (
         
         """
-        column_stat = """`%(column_name)s` %(column_type)s%(column_length)s,
+        column_stat = """%(column_name)s %(column_type)s%(column_length)s,
         """
         close_stat = """
         
-        ) ENGINE=INNODB DEFAULT CHARSET=utf8"""
+        )"""
 
-        meta_column = ""
-        for col in meta_data:
+        create_table_column_info = ""
+        for col in table_detail:
 
-            if col.column_name not in DONOT_CREATE_COLUMN:
+            if col.is_extract:
+
                 if col.column_type_length:
                     column_length = "(%s)" % col.column_type_length
                 else:
                     column_length = ""
 
-                meta_column = meta_column + column_stat % {"column_name": col.column_name,
-                                                           "column_type": COLUMN_TYPE_MAPPING[col.db_type][
-                                                               col.column_type],
-                                                           "column_length": column_length}
+                column_type = "text"
+                for pg_col_type_key, pg_col_type_value in settings.SWITCH_DIFF_DB_COLUMN_TYPE_ACCORDING_PG.items():
+                    if col.column_type in pg_col_type_value:
+                        column_type = pg_col_type_key
+                        break
 
-        create_table_sql = create_stat % {"table_name": table_name} + meta_column.strip()[:-1] + close_stat
+                create_table_column_info = create_table_column_info + column_stat % {"column_name": col.column_name,
+                                                                                     "column_type": column_type,
+                                                                                     "column_length": column_length}
+
+                # 为了记录列是否已经存在,在每次抽取前都应去查看下,是否有新的需要抽取的列但是没有被实体化的
+                if col.is_entity is False:
+                    col.is_entity = True
+                    db.session.add(col)
+
+        # 时态表时间轴
+        create_table_column_info = create_table_column_info + column_stat % {"column_name": "period",
+                                                                             "column_type": "tstzrange NOT NULL",
+                                                                             "column_length": ""}
+
+        create_table_sql = create_stat % {"table_name": table_name} + create_table_column_info.strip()[:-1] + close_stat
 
         db.session.execute(create_table_sql)
         db.session.commit()
+
         return table_name
 
     @classmethod
@@ -59,6 +82,7 @@ class TableOperate:
 
     @classmethod
     def truncate(cls, table_name):
+        table_name = "%s.%s" % (settings.ODS_SCHEMA_NAME, table_name)
         logger.debug("table %s start truncate" % table_name)
         truncate_stat = """truncate table %s""" % table_name
         db.session.execute(truncate_stat)
@@ -116,7 +140,7 @@ class TableOperate:
             where_stat_str = ""
 
         select_stat = "select %(column_list)s from %(table_name)s %(where_stat)s" % {"column_list": column_list_str,
-                                                                                    "table_name": table_name,
-                                                                                    "where_stat": where_stat_str}
+                                                                                     "table_name": table_name,
+                                                                                     "where_stat": where_stat_str}
         execute_data = db.session.execute(select_stat)
         return [dict(row) for row in execute_data]

@@ -6,18 +6,24 @@
 """
 import functools
 from flask_sqlalchemy import SQLAlchemy
-from l_search.handlers.meta_operation import Meta
 from sqlalchemy.dialects.postgresql import insert
-from l_search.utils.logger import Logger
 from sqlalchemy.event import listens_for
+
+from l_search import settings
+from l_search.utils.logger import Logger
 
 logger = Logger()
 
 db = SQLAlchemy()
 db.configure_mappers()
 
+
 Column = functools.partial(db.Column, nullable=False)
 
+
+def create_ods_schema():
+    db.session.execute("CREATE SCHEMA IF NOT EXISTS %s" % settings.ODS_SCHEMA_NAME)
+    db.session.commit()
 
 class InsertObject:
     @classmethod

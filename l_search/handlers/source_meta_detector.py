@@ -3,9 +3,7 @@ import re
 
 from sqlalchemy import MetaData, create_engine
 from sqlalchemy.sql.sqltypes import NullType
-from contextlib import contextmanager
 from sqlalchemy.orm import Session
-from sqlalchemy.orm import sessionmaker
 
 from l_search import settings
 from l_search import models
@@ -75,9 +73,15 @@ class MetaDetector:
         else:
             if not isinstance(column_data.type, NullType):
                 try:
-                    column_type = str(column_data.type).split(" ")[0]
-                    column_type = str(re.sub("(\().*?(\))", "", column_type)).lower()
-                    column_length = str(column_data.type.length)
+                    column_type = str(column_data.type).split(")")
+
+                    if len(column_type) > 1:
+                        column_type = column_type[0].lower() + ")"
+                    else:
+                        column_type = column_type[0].split(" ")[0].lower()
+
+                    column_length = re.findall("\((.*?)\)", column_type)[0]
+                    column_type = str(re.sub("(\().*?(\))", "", column_type))
                 except:
                     pass
             else:
@@ -109,6 +113,9 @@ class MetaDetector:
 
             if self.is_extract_filter(c):
                 result["table_extract_col"] = c.name
+
+            if column_type in settings.SWITCH_DIFF_DB_COLUMN_TYPE_ACCORDING_PG["geometry"]:
+                result["has_geo_col"] = True
 
         result["columns"] = columns_info_list
 

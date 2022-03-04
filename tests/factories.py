@@ -43,7 +43,6 @@ mssql_connection_factory = ModelFactory(
     default_db="LM_XS_ARC_WATER"
 )
 
-
 db_connection_factory = ModelFactory(
     model=models.DBConnect,
     domain="l_search_test",
@@ -57,26 +56,87 @@ db_connection_factory = ModelFactory(
 
 db_table_info_factory = ModelFactory(
     model=models.TableInfo,
-    table_name="test_table",
-    table_extract_col="update_ts"
+    table_name="P_WATERMETER",
+    has_geo_col=True
 )
+
+db_table_detail_dict = [
+    {"column_name": "OBJECTID", "column_type": "integer", "column_type_length": "", "column_position": 1,
+     "is_extract": True, "is_primary": True},
+    {"column_name": "LAT", "column_type": "numeric", "column_type_length": "38, 8", "column_position": 2,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "LON", "column_type": "numeric", "column_type_length": "38, 8", "column_position": 3,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "CALIBER", "column_type": "integer", "column_type_length": "", "column_position": 4,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "MATERIAL", "column_type": "nvarchar", "column_type_length": "50", "column_position": 5,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "CLASSCODE", "column_type": "integer", "column_type_length": "", "column_position": 6,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "UPDATEUSER", "column_type": "nvarchar", "column_type_length": "50", "column_position": 7,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "METERBOXNO", "column_type": "nvarchar", "column_type_length": "50", "column_position": 8,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "WMETERUSERID", "column_type": "integer", "column_type_length": "", "column_position": 9,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "WMSELFNO", "column_type": "nvarchar", "column_type_length": "50", "column_position": 10,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "USERNAME", "column_type": "nvarchar", "column_type_length": "50", "column_position": 11,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "CHECKCYCLE", "column_type": "nvarchar", "column_type_length": "50", "column_position": 12,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "GISNO", "column_type": "nvarchar", "column_type_length": "50", "column_position": 13,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "UPDATETIME", "column_type": "datetime2", "column_type_length": "", "column_position": 14,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "EDITUSERIP", "column_type": "nvarchar", "column_type_length": "50", "column_position": 15,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "IMPORTTIME", "column_type": "datetime2", "column_type_length": "", "column_position": 16,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "IMPORTER", "column_type": "nvarchar", "column_type_length": "50", "column_position": 17,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "ID", "column_type": "integer", "column_type_length": "", "column_position": 18, "is_extract": True,
+     "is_primary": False},
+    {"column_name": "METERADDRESS", "column_type": "nvarchar", "column_type_length": "50", "column_position": 19,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "FILENAME", "column_type": "nvarchar", "column_type_length": "100", "column_position": 20,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "PROJECTNAME", "column_type": "nvarchar", "column_type_length": "100", "column_position": 21,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "PROJECTNO", "column_type": "nvarchar", "column_type_length": "50", "column_position": 22,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "FINISHDATE", "column_type": "datetime2", "column_type_length": "", "column_position": 23,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "PROJECTHEADER", "column_type": "nvarchar", "column_type_length": "50", "column_position": 24,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "PROJECTADMIN", "column_type": "nvarchar", "column_type_length": "50", "column_position": 25,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "ADMINNAME", "column_type": "nvarchar", "column_type_length": "50", "column_position": 26,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "PROJECTTYPE", "column_type": "nvarchar", "column_type_length": "50", "column_position": 27,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "REMARKS", "column_type": "nvarchar", "column_type_length": "50", "column_position": 28,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "IMPORTNO", "column_type": "nvarchar", "column_type_length": "255", "column_position": 29,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "SHAPE", "column_type": "geometry", "column_type_length": "", "column_position": 30,
+     "is_extract": True, "is_primary": False}]
 
 
 class Factory:
 
-    def create_mssql_connect(self):
-        create_date = mssql_connection_factory.create()
-        return create_date
-
-    def create_db_connect(self):
-        create_data = db_connection_factory.create()
-        result_data = {"id": create_data.id,
-                       "domain": create_data.domain,
-                       "db_type": create_data.db_type,
-                       "host": create_data.host,
-                       "port": create_data.port,
-                       "account": create_data.account,
-                       "default_db": create_data.default_db}
+    def create_db_connect(self, return_dict=True):
+        create_data = mssql_connection_factory.create()
+        if return_dict:
+            result_data = {"id": create_data.id,
+                           "domain": create_data.domain,
+                           "db_type": create_data.db_type,
+                           "host": create_data.host,
+                           "port": create_data.port,
+                           "account": create_data.account,
+                           "default_db": create_data.default_db}
+        else:
+            result_data = create_data
         return result_data
 
     def create_table_info(self):
@@ -94,7 +154,11 @@ class Factory:
                        }
         return result_data
 
-    def create_table_detail(self, column_info_list):
+    def create_table_detail(self, column_info_list=None):
+
+        if column_info_list is None:
+            column_info_list = db_table_detail_dict
+
         create_table_info = self.create_table_info()
 
         result = []

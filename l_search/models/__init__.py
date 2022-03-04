@@ -125,6 +125,7 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
     table_extract_col = Column(db.String(150), nullable=True)
     need_extract = Column(db.Boolean, default=False)
     latest_extract_date = Column(db.DateTime(), nullable=True)
+    has_geo_col = Column(db.Boolean, default=False)
 
     __table_args__ = (
     db.Index("table_info_connection_id_table_name_index", "connection_id", "table_name", unique=True),)
@@ -133,8 +134,10 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
     def get_tables(cls,
                    connection_id=None,
                    connection_info=None,
+                   table_id=None,
                    table_name=None,
-                   need_extract=None):
+                   need_extract=None,
+                   has_geo_col=None):
         """
         元数据表信息提取sql生成
         :param connection_info: object DBConnect
@@ -150,8 +153,11 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
             get_tables_query = get_tables_query.filter(cls.connection_id == connection_id)
         elif connection_info:
             get_tables_query = get_tables_query.filter(cls.connection == connection_info)
+            connection_id = connection_info.id
 
-        if table_name:
+        if table_id:
+            get_tables_query = get_tables_query.filter(cls.id == table_id)
+        elif table_name:
             logger.debug("查询链接id(%d)下的表信息:%s" % (connection_id, table_name))
 
             if "|" in table_name:
@@ -164,10 +170,16 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
             get_tables_query = get_tables_query.filter(func.lower(cls.table_name).in_(table_name_list))
 
         else:
-            logger.debug("查询链接id(%d)下的所有表" % (connection_id))
+            if connection_id:
+                logger.debug("查询链接id(%d)下的所有表" % (connection_id))
+            else:
+                logger.debug("查询所记录的所有表")
 
         if need_extract:
             get_tables_query = get_tables_query.filter(cls.need_extract == need_extract)
+
+        if has_geo_col:
+            get_tables_query = get_tables_query.filter(cls.has_geo_col == has_geo_col)
 
         return get_tables_query.all()
 
@@ -216,6 +228,7 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
     column_position = Column(db.Integer)
     is_extract = Column(db.Boolean, default=True)
     is_primary = Column(db.Boolean, default=False)
+    is_entity = Column(db.Boolean, default=False)
 
     __table_args__ = (
         db.Index("table_detail_table_info_id_column_name_index", "table_info_id", "column_name", unique=True),)
@@ -226,7 +239,8 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
                          table_info=None,
                          column_name=None,
                          is_extract=None,
-                         table_primary=None
+                         table_primary=None,
+                         is_entity=None
                          ):
         meta_query = cls.query
 
@@ -244,6 +258,9 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
 
         if table_primary:
             meta_query = meta_query.filter(cls.is_primary == table_primary).order_by(cls.is_primary)
+
+        if is_entity:
+            meta_query = meta_query.filter(cls.is_entity == is_entity)
 
         return meta_query.all()
 
