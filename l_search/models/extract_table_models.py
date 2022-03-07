@@ -24,7 +24,7 @@ class TableOperate:
         :return:
         """
 
-        table_name = "%s.%s" % (settings.ODS_SCHEMA_NAME, table_info.table_name)
+        table_name = "%s.%s" % (settings.ODS_SCHEMA_NAME, str(table_info.table_name).lower())
         logger.debug("table %s start create" % table_name)
 
         table_detail = models.TableDetail.get_table_detail(table_info=table_info,
@@ -55,7 +55,7 @@ class TableOperate:
                         column_type = pg_col_type_key
                         break
 
-                create_table_column_info = create_table_column_info + column_stat % {"column_name": col.column_name,
+                create_table_column_info = create_table_column_info + column_stat % {"column_name": str(col.column_name).lower(),
                                                                                      "column_type": column_type,
                                                                                      "column_length": column_length}
 

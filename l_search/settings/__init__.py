@@ -6,7 +6,7 @@
 """
 from l_search.models import DBObjectType
 
-SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://postgres:123456xxx@192.168.1.55:5432/l_search"
+SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://postgres:123456xxx@192.168.1.225:6688/l_search"
 
 ODS_SCHEMA_NAME = "ods"
 

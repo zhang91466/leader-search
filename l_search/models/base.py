@@ -23,6 +23,10 @@ Column = functools.partial(db.Column, nullable=False)
 
 def create_ods_schema():
     db.session.execute("CREATE SCHEMA IF NOT EXISTS %s" % settings.ODS_SCHEMA_NAME)
+    db.session.execute("CREATE EXTENSION IF NOT EXISTS postgis")
+    db.session.execute("CREATE EXTENSION IF NOT EXISTS postgis_topology")
+    db.session.execute("CREATE EXTENSION IF NOT EXISTS fuzzystrmatch")
+    db.session.execute("CREATE EXTENSION IF NOT EXISTS postgis_tiger_geocoder")
     db.session.commit()
 
 class InsertObject:
