@@ -16,15 +16,22 @@ logger = Logger()
 
 class TableOperate:
 
+    @staticmethod
+    def get_real_table_name(table_name, is_stag=False):
+        if is_stag:
+            table_name = "%s.%s" % (settings.ODS_STAG_SCHEMA_NAME, str(table_name).lower())
+        else:
+            table_name = "%s.%s" % (settings.ODS_SCHEMA_NAME, str(table_name).lower())
+        return table_name
+
     @classmethod
-    def create_table(cls, table_info):
+    def create_table(cls, table_info, is_stag=False, is_commit=True):
         """
         创建表
         :param table_info: object TableInfo query result
-        :return:
+        :return: table_name
         """
-
-        table_name = "%s.%s" % (settings.ODS_SCHEMA_NAME, str(table_info.table_name).lower())
+        table_name = cls.get_real_table_name(table_name=table_info.table_name, is_stag=is_stag)
         logger.debug("table %s start create" % table_name)
 
         table_detail = models.TableDetail.get_table_detail(table_info=table_info,
@@ -55,9 +62,10 @@ class TableOperate:
                         column_type = pg_col_type_key
                         break
 
-                create_table_column_info = create_table_column_info + column_stat % {"column_name": str(col.column_name).lower(),
-                                                                                     "column_type": column_type,
-                                                                                     "column_length": column_length}
+                create_table_column_info = create_table_column_info + column_stat % {
+                    "column_name": str(col.column_name).lower(),
+                    "column_type": column_type,
+                    "column_length": column_length}
 
                 # 为了记录列是否已经存在,在每次抽取前都应去查看下,是否有新的需要抽取的列但是没有被实体化的
                 if col.is_entity is False:
@@ -66,30 +74,82 @@ class TableOperate:
 
         # 时态表时间轴
         create_table_column_info = create_table_column_info + column_stat % {"column_name": "period",
-                                                                             "column_type": "tstzrange NOT NULL",
+                                                                             "column_type": "tsrange NOT NULL",
                                                                              "column_length": ""}
 
         create_table_sql = create_stat % {"table_name": table_name} + create_table_column_info.strip()[:-1] + close_stat
 
         db.session.execute(create_table_sql)
-        db.session.commit()
+
+        if is_commit:
+            db.session.commit()
 
         return table_name
 
     @classmethod
-    def alter_table(cls):
-        pass
+    def alter_table(cls, table_info):
+        check_new_columns = models.TableDetail.get_table_detail(table_info=table_info,
+                                                                is_entity=False)
+        if len(check_new_columns) > 0:
+            # 创建stag表
+            # 迁移数据
+            # 删除并重建ods表
+            # 迁移数据
+            # 完成表更新
+            real_table_name = cls.get_real_table_name(table_name=table_info.table_name, is_stag=False)
+            stag_table_name = cls.create_table(table_info=table_info, is_stag=True, is_commit=False)
+            get_exists_column_name = models.TableDetail.get_table_detail(table_info=table_info,
+                                                                         is_entity=True)
+
+            get_exists_column_name_string = ",".join([x.column_name for x in get_exists_column_name])
+            create_stag_stmt = """create table %s as select %s from %s""" % (stag_table_name,
+                                                                             get_exists_column_name_string,
+                                                                             real_table_name
+                                                                             )
+            db.session.execute(create_stag_stmt)
+
+            cls.drop_table(table_info=table_info, is_stag=False, is_commit=False)
+            real_table_name = cls.create_table(table_info=table_info, is_stag=False, is_commit=False)
+
+            get_exists_column_name = models.TableDetail.get_table_detail(table_info=table_info,
+                                                                         is_extract=True)
+            cls.insert_table_to_table(source_table_name=stag_table_name,
+                                      target_table_name=real_table_name,
+                                      table_columns_str=get_exists_column_name,
+                                      is_commit=False)
+            cls.drop_table(table_info=table_info, is_stag=True, is_commit=True)
 
     @classmethod
-    def truncate(cls, table_name):
-        table_name = "%s.%s" % (settings.ODS_SCHEMA_NAME, table_name)
+    def truncate(cls, table_info, is_stag=False, is_commit=True):
+        """
+        重置表数据
+        :param table_info: object TableInfo query result
+        :return:
+        """
+        table_name = cls.get_real_table_name(table_name=table_info.table_name, is_stag=is_stag)
         logger.debug("table %s start truncate" % table_name)
         truncate_stat = """truncate table %s""" % table_name
         db.session.execute(truncate_stat)
-        db.session.commit()
+        if is_commit:
+            db.session.commit()
 
     @classmethod
-    def insert(cls, table_name, columns_in_order, values_in_order):
+    def drop_table(cls, table_info, is_stag=False, is_commit=True):
+        """
+        删除表
+        :param table_info: object TableInfo query result
+        :return:
+        """
+        table_name = cls.get_real_table_name(table_name=table_info.table_name, is_stag=is_stag)
+        logger.debug("table %s start drop" % table_name)
+        drop_stat = "drop table if exists %s" % table_name
+        db.session.execute(drop_stat)
+        models.TableDetail.update_entity(table_info=table_info,
+                                         is_entity=False,
+                                         is_commit=is_commit)
+
+    @classmethod
+    def insert_value_to_table(cls, table_name, columns_in_order, values_in_order):
         logger.debug("Table %s start insert" % table_name)
         # """INSERT INTO full_text_index (id, extract_data_info_id, block_name, block_key, row_content) VALUES (:id, :extract_data_info_id, :block_name, :block_key, :row_content)"""
 
@@ -105,6 +165,18 @@ class TableOperate:
         return row_count
 
     @classmethod
+    def insert_table_to_table(cls, source_table_name, target_table_name, table_columns_str, is_commit=True):
+        insert_stat = """insert into %(target)s(%(target_columns)s) select %(source_columns)s from %(source)s""" % (
+        {"target": target_table_name,
+         "source": source_table_name,
+         "target_columns": table_columns_str.replace("geometry", "shape") + ",period",
+         "source_columns": table_columns_str + """, tsrange(now()::timestamp,NULL, '[)')"""})
+        execute_result = db.session.execute(insert_stat)
+        if is_commit:
+            db.session.commit()
+        return execute_result.rowcount
+
+    @classmethod
     def delete(cls, table_name, where_stat=None):
         logger.debug("table %s start delete" % table_name)
 
@@ -116,13 +188,6 @@ class TableOperate:
         delete_stat = "delete from %(table_name)s %(where_stat)s" % {"table_name": table_name,
                                                                      "where_stat": where_stat}
         db.session.execute(delete_stat)
-        db.session.commit()
-
-    @classmethod
-    def drop_table(cls, table_name):
-        logger.debug("table %s start drop" % table_name)
-        drop_stat = "drop table if exists %s" % table_name
-        db.session.execute(drop_stat)
         db.session.commit()
 
     @classmethod

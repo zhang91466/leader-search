@@ -128,7 +128,7 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
     has_geo_col = Column(db.Boolean, default=False)
 
     __table_args__ = (
-    db.Index("table_info_connection_id_table_name_index", "connection_id", "table_name", unique=True),)
+        db.Index("table_info_connection_id_table_name_index", "connection_id", "table_name", unique=True),)
 
     @classmethod
     def get_tables(cls,
@@ -211,7 +211,8 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
 
 def table_detail_primary_id_value(context):
     return hashlib.md5(str(
-        str(context.get_current_parameters()["table_info_id"]) + context.get_current_parameters()["column_name"]).encode(
+        str(context.get_current_parameters()["table_info_id"]) + context.get_current_parameters()[
+            "column_name"]).encode(
         'utf-8')).hexdigest()
 
 
@@ -278,6 +279,32 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
                                          col_not_in=[cls.id.key, cls.created_at.key],
                                          update_index=[cls.table_info_id, cls.column_name])
         return execute_result
+
+    @classmethod
+    def update_entity(cls, table_info, is_entity, is_commit=True):
+        cls.query.filter(and_(cls.table_info == table_info,
+                              cls.is_extract == True
+                              )).update({cls.is_entity: is_entity})
+        if is_commit:
+            db.session.commit()
+
+    @classmethod
+    def get_columns(cls,
+                    table_info_id=None,
+                    table_info=None,
+                    is_extract=None,
+                    is_entity=None,
+                    return_type="str"):
+        query_result = cls.get_table_detail(table_info_id=table_info_id,
+                                            table_info=table_info,
+                                            is_extract=is_extract,
+                                            is_entity=is_entity)
+        column_name_list = [str(x.column_name).lower() for x in query_result]
+
+        if return_type == "str":
+            return ",".join(column_name_list)
+        else:
+            return column_name_list
 
 
 class FullTextIndex(db.Model, InsertObject, FullText):

@@ -10,6 +10,7 @@ from unittest import TestCase
 
 from l_search.app import create_app
 from l_search.models import db, convert_to_dict
+from l_search.models.base import create_ods_schema, drop_ods_schema
 from tests.factories import Factory
 
 
@@ -22,7 +23,9 @@ class BaseTestCase(TestCase):
         self.app_ctx.push()
         db.session.close()
         db.drop_all()
+        drop_ods_schema()
         db.create_all()
+        create_ods_schema()
         self.client = self.app.test_client()
         self.factory = Factory()
 

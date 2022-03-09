@@ -7,6 +7,8 @@
 
 from l_search.models import db
 from l_search import models
+import pandas as pd
+from l_search import settings
 
 
 class ModelFactory:
@@ -56,70 +58,118 @@ db_connection_factory = ModelFactory(
 
 db_table_info_factory = ModelFactory(
     model=models.TableInfo,
-    table_name="P_WATERMETER",
+    table_name="l_flowpipe",
     has_geo_col=True
 )
 
 db_table_detail_dict = [
     {"column_name": "OBJECTID", "column_type": "integer", "column_type_length": "", "column_position": 1,
      "is_extract": True, "is_primary": True},
-    {"column_name": "LAT", "column_type": "numeric", "column_type_length": "38, 8", "column_position": 2,
+    {"column_name": "FIRSTNO", "column_type": "nvarchar", "column_type_length": "50", "column_position": 2,
      "is_extract": True, "is_primary": False},
-    {"column_name": "LON", "column_type": "numeric", "column_type_length": "38, 8", "column_position": 3,
+    {"column_name": "ENDNO", "column_type": "nvarchar", "column_type_length": "50", "column_position": 3,
      "is_extract": True, "is_primary": False},
-    {"column_name": "CALIBER", "column_type": "integer", "column_type_length": "", "column_position": 4,
+    {"column_name": "PIPELENGTH", "column_type": "numeric", "column_type_length": "38, 8", "column_position": 4,
      "is_extract": True, "is_primary": False},
-    {"column_name": "MATERIAL", "column_type": "nvarchar", "column_type_length": "50", "column_position": 5,
+    {"column_name": "PIPEDIAMETER", "column_type": "integer", "column_type_length": "", "column_position": 5,
      "is_extract": True, "is_primary": False},
-    {"column_name": "CLASSCODE", "column_type": "integer", "column_type_length": "", "column_position": 6,
+    {"column_name": "PIPEMATERIAL", "column_type": "nvarchar", "column_type_length": "50", "column_position": 6,
      "is_extract": True, "is_primary": False},
-    {"column_name": "UPDATEUSER", "column_type": "nvarchar", "column_type_length": "50", "column_position": 7,
+    {"column_name": "CLASSCODE", "column_type": "integer", "column_type_length": "", "column_position": 7,
      "is_extract": True, "is_primary": False},
-    {"column_name": "METERBOXNO", "column_type": "nvarchar", "column_type_length": "50", "column_position": 8,
+    {"column_name": "LOCALITYROAD", "column_type": "nvarchar", "column_type_length": "50", "column_position": 8,
      "is_extract": True, "is_primary": False},
-    {"column_name": "WMETERUSERID", "column_type": "integer", "column_type_length": "", "column_position": 9,
+    {"column_name": "OVERHAULDATE", "column_type": "datetime2", "column_type_length": "", "column_position": 9,
      "is_extract": True, "is_primary": False},
-    {"column_name": "WMSELFNO", "column_type": "nvarchar", "column_type_length": "50", "column_position": 10,
+    {"column_name": "DEVICESTATE", "column_type": "nvarchar", "column_type_length": "50", "column_position": 10,
      "is_extract": True, "is_primary": False},
-    {"column_name": "USERNAME", "column_type": "nvarchar", "column_type_length": "50", "column_position": 11,
+    {"column_name": "INSTALLUNIT", "column_type": "nvarchar", "column_type_length": "50", "column_position": 11,
      "is_extract": True, "is_primary": False},
-    {"column_name": "CHECKCYCLE", "column_type": "nvarchar", "column_type_length": "50", "column_position": 12,
+    {"column_name": "MANUFACTURER", "column_type": "nvarchar", "column_type_length": "50", "column_position": 12,
      "is_extract": True, "is_primary": False},
-    {"column_name": "GISNO", "column_type": "nvarchar", "column_type_length": "50", "column_position": 13,
+    {"column_name": "PROJECTNAME", "column_type": "nvarchar", "column_type_length": "50", "column_position": 13,
      "is_extract": True, "is_primary": False},
-    {"column_name": "UPDATETIME", "column_type": "datetime2", "column_type_length": "", "column_position": 14,
+    {"column_name": "BROKENTIMES", "column_type": "integer", "column_type_length": "", "column_position": 14,
      "is_extract": True, "is_primary": False},
-    {"column_name": "EDITUSERIP", "column_type": "nvarchar", "column_type_length": "50", "column_position": 15,
+    {"column_name": "FINISHDATE", "column_type": "datetime2", "column_type_length": "", "column_position": 15,
      "is_extract": True, "is_primary": False},
-    {"column_name": "IMPORTTIME", "column_type": "datetime2", "column_type_length": "", "column_position": 16,
+    {"column_name": "MAINTAINTIMES", "column_type": "integer", "column_type_length": "", "column_position": 16,
      "is_extract": True, "is_primary": False},
-    {"column_name": "IMPORTER", "column_type": "nvarchar", "column_type_length": "50", "column_position": 17,
+    {"column_name": "PIPEADDRESS", "column_type": "nvarchar", "column_type_length": "50", "column_position": 17,
      "is_extract": True, "is_primary": False},
-    {"column_name": "ID", "column_type": "integer", "column_type_length": "", "column_position": 18, "is_extract": True,
-     "is_primary": False},
-    {"column_name": "METERADDRESS", "column_type": "nvarchar", "column_type_length": "50", "column_position": 19,
+    {"column_name": "EMBEDMODE", "column_type": "nvarchar", "column_type_length": "50", "column_position": 18,
      "is_extract": True, "is_primary": False},
-    {"column_name": "FILENAME", "column_type": "nvarchar", "column_type_length": "100", "column_position": 20,
+    {"column_name": "REMARKS", "column_type": "nvarchar", "column_type_length": "50", "column_position": 19,
      "is_extract": True, "is_primary": False},
-    {"column_name": "PROJECTNAME", "column_type": "nvarchar", "column_type_length": "100", "column_position": 21,
+    {"column_name": "CASENO", "column_type": "nvarchar", "column_type_length": "50", "column_position": 20,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "UPDATEUSER", "column_type": "nvarchar", "column_type_length": "50", "column_position": 21,
      "is_extract": True, "is_primary": False},
     {"column_name": "PROJECTNO", "column_type": "nvarchar", "column_type_length": "50", "column_position": 22,
      "is_extract": True, "is_primary": False},
-    {"column_name": "FINISHDATE", "column_type": "datetime2", "column_type_length": "", "column_position": 23,
+    {"column_name": "ADMINNAME", "column_type": "nvarchar", "column_type_length": "50", "column_position": 23,
      "is_extract": True, "is_primary": False},
-    {"column_name": "PROJECTHEADER", "column_type": "nvarchar", "column_type_length": "50", "column_position": 24,
+    {"column_name": "PIPETYPE", "column_type": "nvarchar", "column_type_length": "50", "column_position": 24,
      "is_extract": True, "is_primary": False},
-    {"column_name": "PROJECTADMIN", "column_type": "nvarchar", "column_type_length": "50", "column_position": 25,
+    {"column_name": "PROJECTHEADER", "column_type": "nvarchar", "column_type_length": "50", "column_position": 25,
      "is_extract": True, "is_primary": False},
-    {"column_name": "ADMINNAME", "column_type": "nvarchar", "column_type_length": "50", "column_position": 26,
+    {"column_name": "PROJECTADMIN", "column_type": "nvarchar", "column_type_length": "50", "column_position": 26,
      "is_extract": True, "is_primary": False},
-    {"column_name": "PROJECTTYPE", "column_type": "nvarchar", "column_type_length": "50", "column_position": 27,
+    {"column_name": "LATECASENO", "column_type": "nvarchar", "column_type_length": "50", "column_position": 27,
      "is_extract": True, "is_primary": False},
-    {"column_name": "REMARKS", "column_type": "nvarchar", "column_type_length": "50", "column_position": 28,
+    {"column_name": "LATEUPDATEUSER", "column_type": "nvarchar", "column_type_length": "50", "column_position": 28,
      "is_extract": True, "is_primary": False},
-    {"column_name": "IMPORTNO", "column_type": "nvarchar", "column_type_length": "255", "column_position": 29,
+    {"column_name": "LATEUPDATETIME", "column_type": "datetime2", "column_type_length": "", "column_position": 29,
      "is_extract": True, "is_primary": False},
-    {"column_name": "SHAPE", "column_type": "geometry", "column_type_length": "", "column_position": 30,
+    {"column_name": "USEDYEAR", "column_type": "integer", "column_type_length": "", "column_position": 30,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "ROUGHCOEF", "column_type": "numeric", "column_type_length": "38, 8", "column_position": 31,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "FLOW", "column_type": "numeric", "column_type_length": "38, 8", "column_position": 32,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "VEL", "column_type": "numeric", "column_type_length": "38, 8", "column_position": 33,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "UNITLOSS", "column_type": "numeric", "column_type_length": "38, 8", "column_position": 34,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "QUALITY", "column_type": "numeric", "column_type_length": "38, 8", "column_position": 35,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "REACTIONRATE", "column_type": "numeric", "column_type_length": "38, 8", "column_position": 36,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "STATUS", "column_type": "numeric", "column_type_length": "38, 8", "column_position": 37,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "FRICTIONFACTOR", "column_type": "numeric", "column_type_length": "38, 8", "column_position": 38,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "PIPEDIAMETERHYD", "column_type": "integer", "column_type_length": "", "column_position": 39,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "INITALSTATUS", "column_type": "nvarchar", "column_type_length": "50", "column_position": 40,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "PROBESTATIONSNO", "column_type": "nvarchar", "column_type_length": "50", "column_position": 41,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "GISNO", "column_type": "nvarchar", "column_type_length": "50", "column_position": 42,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "UPDATETIME", "column_type": "datetime2", "column_type_length": "", "column_position": 43,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "EDITUSERIP", "column_type": "nvarchar", "column_type_length": "50", "column_position": 44,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "IMPORTTIME", "column_type": "datetime2", "column_type_length": "", "column_position": 45,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "IMPORTER", "column_type": "nvarchar", "column_type_length": "50", "column_position": 46,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "ID", "column_type": "integer", "column_type_length": "", "column_position": 47, "is_extract": True,
+     "is_primary": False},
+    {"column_name": "FILENAME", "column_type": "nvarchar", "column_type_length": "100", "column_position": 48,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "SPECIALPIPETYPE", "column_type": "nvarchar", "column_type_length": "50", "column_position": 49,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "PROJECTTYPE", "column_type": "nvarchar", "column_type_length": "50", "column_position": 50,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "PIPENO", "column_type": "nvarchar", "column_type_length": "50", "column_position": 51,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "FIRSTID", "column_type": "nvarchar", "column_type_length": "50", "column_position": 52,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "ENDID", "column_type": "nvarchar", "column_type_length": "50", "column_position": 53,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "SHAPE", "column_type": "geometry", "column_type_length": "", "column_position": 54,
      "is_extract": True, "is_primary": False}]
 
 
@@ -171,3 +221,60 @@ class Factory:
             result.append(column_new_data_dict)
 
         return result
+
+    def insert_data_to_stag(self, table_info):
+        """
+        pickle里的数据结构和上面的数据结构保持统一
+        :return:
+        """
+        import os
+        ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+        pickle_path = os.path.join(ROOT_DIR, "./mock_data/geo_mock_data.pkl")
+        insert_data_df = pd.read_pickle(pickle_path)
+
+
+
+        table_schema = models.TableDetail.get_table_detail(table_info=table_info,
+                                            is_entity=True)
+        table_schema_column_type = {}
+        for col in table_schema:
+            column_type = None
+            for c_type_key,v in settings.SWITCH_DIFF_DB_COLUMN_TYPE_ACCORDING_PG.items():
+                if col.column_type in v:
+                    column_type = c_type_key
+                    break
+
+            if column_type is None:
+                column_type = col.column_type
+
+            table_schema_column_type[col.column_name] = column_type
+
+        column_type = {}
+        drop_column = []
+        for c_name,c_type in insert_data_df.dtypes.items():
+
+            if insert_data_df[c_name].isnull().all():
+                drop_column.append(c_name)
+                continue
+
+            if c_name == "geometry":
+                continue
+
+            actual_type = settings.SWITCH_DIFF_DB_COLUMN_TYPE_ACCORDING_PD[table_schema_column_type[c_name]]
+            if c_type != actual_type:
+                column_type[c_name] = actual_type
+
+        # 删除整列为nan的列
+        insert_data_df = insert_data_df.drop(columns=drop_column)
+        # 列格式与实际格式不符，进行转换
+        insert_data_df = insert_data_df.astype(column_type, errors="ignore")
+        # 所有列命小写
+        insert_data_df.columns = insert_data_df.columns.str.lower()
+
+        insert_data_df.to_postgis(
+            con=db.engine,
+            name=str(table_info.table_name).lower(),
+            if_exists="append",
+            schema=settings.ODS_STAG_SCHEMA_NAME
+        )
+        return insert_data_df.columns

@@ -10,6 +10,8 @@ SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://postgres:123456xxx@192.168.1.22
 
 ODS_SCHEMA_NAME = "ods"
 
+ODS_STAG_SCHEMA_NAME = "ods_stag"
+
 PROXIES_COUNT = 1
 
 SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -40,5 +42,13 @@ SWITCH_DIFF_DB_COLUMN_TYPE_ACCORDING_PG = {"varchar": ["varchar", "char", "nvarc
                                            "numeric": ["float", "numeric"],
                                            "text": ["text", "xml"],
                                            "timestamp": ["timestamp", "datetime", "datetime2"],
+                                           "geometry": ["geometry"]
+                                           }
+
+SWITCH_DIFF_DB_COLUMN_TYPE_ACCORDING_PD = {"varchar": "object",
+                                           "text": "object",
+                                           "integer": "int64",
+                                           "numeric": "float64",
+                                           "timestamp": "datetime64",
                                            "geometry": ["geometry"]
                                            }
