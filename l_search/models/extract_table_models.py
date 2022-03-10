@@ -31,11 +31,13 @@ class TableOperate:
         :param table_info: object TableInfo query result
         :return: table_name
         """
+
         table_name = cls.get_real_table_name(table_name=table_info.table_name, is_stag=is_stag)
         logger.debug("table %s start create" % table_name)
 
         table_detail = models.TableDetail.get_table_detail(table_info=table_info,
-                                                           is_extract=True)
+                                                           is_extract=True,
+                                                           is_system_col=True)
 
         create_stat = """create table if not exists %(table_name)s (
         
@@ -49,7 +51,7 @@ class TableOperate:
         create_table_column_info = ""
         for col in table_detail:
 
-            if col.is_extract:
+            if col.is_extract or col.is_system_col:
 
                 if col.column_type_length:
                     column_length = "(%s)" % col.column_type_length
@@ -68,14 +70,9 @@ class TableOperate:
                     "column_length": column_length}
 
                 # 为了记录列是否已经存在,在每次抽取前都应去查看下,是否有新的需要抽取的列但是没有被实体化的
-                if col.is_entity is False:
+                if col.is_entity is False and is_stag is False:
                     col.is_entity = True
                     db.session.add(col)
-
-        # 时态表时间轴
-        create_table_column_info = create_table_column_info + column_stat % {"column_name": "period",
-                                                                             "column_type": "tsrange NOT NULL",
-                                                                             "column_length": ""}
 
         create_table_sql = create_stat % {"table_name": table_name} + create_table_column_info.strip()[:-1] + close_stat
 
@@ -83,6 +80,8 @@ class TableOperate:
 
         if is_commit:
             db.session.commit()
+        else:
+            db.session.flush()
 
         return table_name
 
@@ -97,11 +96,11 @@ class TableOperate:
             # 迁移数据
             # 完成表更新
             real_table_name = cls.get_real_table_name(table_name=table_info.table_name, is_stag=False)
-            stag_table_name = cls.create_table(table_info=table_info, is_stag=True, is_commit=False)
+            stag_table_name = cls.get_real_table_name(table_name=table_info.table_name, is_stag=True)
             get_exists_column_name = models.TableDetail.get_table_detail(table_info=table_info,
                                                                          is_entity=True)
 
-            get_exists_column_name_string = ",".join([x.column_name for x in get_exists_column_name])
+            get_exists_column_name_string = ",".join([str(x.column_name).lower() for x in get_exists_column_name])
             create_stag_stmt = """create table %s as select %s from %s""" % (stag_table_name,
                                                                              get_exists_column_name_string,
                                                                              real_table_name
@@ -111,11 +110,10 @@ class TableOperate:
             cls.drop_table(table_info=table_info, is_stag=False, is_commit=False)
             real_table_name = cls.create_table(table_info=table_info, is_stag=False, is_commit=False)
 
-            get_exists_column_name = models.TableDetail.get_table_detail(table_info=table_info,
-                                                                         is_extract=True)
             cls.insert_table_to_table(source_table_name=stag_table_name,
                                       target_table_name=real_table_name,
-                                      table_columns_str=get_exists_column_name,
+                                      source_table_columns_str=get_exists_column_name_string,
+                                      target_table_columns_str=get_exists_column_name_string,
                                       is_commit=False)
             cls.drop_table(table_info=table_info, is_stag=True, is_commit=True)
 
@@ -132,6 +130,8 @@ class TableOperate:
         db.session.execute(truncate_stat)
         if is_commit:
             db.session.commit()
+        else:
+            db.session.flush()
 
     @classmethod
     def drop_table(cls, table_info, is_stag=False, is_commit=True):
@@ -144,9 +144,14 @@ class TableOperate:
         logger.debug("table %s start drop" % table_name)
         drop_stat = "drop table if exists %s" % table_name
         db.session.execute(drop_stat)
-        models.TableDetail.update_entity(table_info=table_info,
-                                         is_entity=False,
-                                         is_commit=is_commit)
+        if is_stag is False:
+            models.TableDetail.update_entity(table_info=table_info,
+                                             is_entity=False,
+                                             is_commit=is_commit)
+        if is_commit:
+            db.session.commit()
+        else:
+            db.session.flush()
 
     @classmethod
     def insert_value_to_table(cls, table_name, columns_in_order, values_in_order):
@@ -165,15 +170,22 @@ class TableOperate:
         return row_count
 
     @classmethod
-    def insert_table_to_table(cls, source_table_name, target_table_name, table_columns_str, is_commit=True):
+    def insert_table_to_table(cls,
+                              source_table_name,
+                              target_table_name,
+                              source_table_columns_str,
+                              target_table_columns_str,
+                              is_commit=True):
         insert_stat = """insert into %(target)s(%(target_columns)s) select %(source_columns)s from %(source)s""" % (
         {"target": target_table_name,
          "source": source_table_name,
-         "target_columns": table_columns_str.replace("geometry", "shape") + ",period",
-         "source_columns": table_columns_str + """, tsrange(now()::timestamp,NULL, '[)')"""})
+         "target_columns": target_table_columns_str,
+         "source_columns": source_table_columns_str})
         execute_result = db.session.execute(insert_stat)
         if is_commit:
             db.session.commit()
+        else:
+            db.session.flush()
         return execute_result.rowcount
 
     @classmethod

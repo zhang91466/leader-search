@@ -88,19 +88,19 @@ class DBConnect(db.Model, InsertObject, TimestampMixin):
 
         get_query = cls.query
 
-        if domain:
+        if domain is not None:
             get_query = get_query.filter(cls.domain == domain)
 
-        if db_type:
+        if db_type is not None:
             get_query = get_query.filter(cls.db_type == db_type)
 
-        if default_db:
+        if default_db is not None:
             get_query = get_query.filter(cls.default_db == default_db)
 
-        if db_schema:
+        if db_schema is not None:
             get_query = get_query.filter(cls.db_schema == db_schema)
 
-        if connection_id:
+        if connection_id is not None:
             get_query = get_query.filter(cls.id == connection_id)
 
         if is_all:
@@ -155,9 +155,9 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
             get_tables_query = get_tables_query.filter(cls.connection == connection_info)
             connection_id = connection_info.id
 
-        if table_id:
+        if table_id is not None:
             get_tables_query = get_tables_query.filter(cls.id == table_id)
-        elif table_name:
+        elif table_name is not None:
             logger.debug("查询链接id(%d)下的表信息:%s" % (connection_id, table_name))
 
             if "|" in table_name:
@@ -170,15 +170,15 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
             get_tables_query = get_tables_query.filter(func.lower(cls.table_name).in_(table_name_list))
 
         else:
-            if connection_id:
+            if connection_id is not None:
                 logger.debug("查询链接id(%d)下的所有表" % (connection_id))
             else:
                 logger.debug("查询所记录的所有表")
 
-        if need_extract:
+        if need_extract is not None:
             get_tables_query = get_tables_query.filter(cls.need_extract == need_extract)
 
-        if has_geo_col:
+        if has_geo_col is not None:
             get_tables_query = get_tables_query.filter(cls.has_geo_col == has_geo_col)
 
         return get_tables_query.all()
@@ -230,6 +230,7 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
     is_extract = Column(db.Boolean, default=True)
     is_primary = Column(db.Boolean, default=False)
     is_entity = Column(db.Boolean, default=False)
+    is_system_col = Column(db.Boolean, default=False)
 
     __table_args__ = (
         db.Index("table_detail_table_info_id_column_name_index", "table_info_id", "column_name", unique=True),)
@@ -241,29 +242,34 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
                          column_name=None,
                          is_extract=None,
                          table_primary=None,
-                         is_entity=None
+                         is_entity=None,
+                         is_system_col=None
                          ):
         meta_query = cls.query
 
-        if table_info_id:
+        if table_info_id is not None:
             meta_query = meta_query.filter(cls.table_info_id == table_info_id)
 
-        if table_info:
+        if table_info is not None:
             meta_query = meta_query.filter(cls.table_info == table_info)
 
-        if column_name:
+        if column_name is not None:
             meta_query = meta_query.filter(cls.column_name == column_name)
 
-        if is_extract:
-            meta_query = meta_query.filter(cls.is_extract == is_extract).order_by(cls.column_position)
+        if is_extract is not None:
+            if is_system_col:
+                meta_query = meta_query.filter(or_(cls.is_extract == is_extract,
+                                                   cls.is_system_col == True))
+            else:
+                meta_query = meta_query.filter(cls.is_extract == is_extract)
 
-        if table_primary:
-            meta_query = meta_query.filter(cls.is_primary == table_primary).order_by(cls.is_primary)
+        if table_primary is not None:
+            meta_query = meta_query.filter(cls.is_primary == table_primary)
 
-        if is_entity:
+        if is_entity is not None:
             meta_query = meta_query.filter(cls.is_entity == is_entity)
 
-        return meta_query.all()
+        return meta_query.order_by(cls.column_position).all()
 
     @classmethod
     def upsert(cls, input_data):
@@ -274,6 +280,21 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
         for d in input_data:
             if "id" in d and d["id"] is None:
                 d.pop("id")
+
+        period_column = {"table_info_id": input_data[0]["table_info_id"],
+                         "column_name": "period",
+                         "column_type": "tsrange",
+                         "column_type_length": "",
+                         "is_extract": False,
+                         "is_system_col": True}
+        check_period_column_exist = cls.get_table_detail(table_info_id=period_column["table_info_id"],
+                                                         column_name=period_column["column_name"])
+
+        if len(check_period_column_exist) == 0:
+            # 添加时态列, 一般是表第一次创建的时候 需要添加这个列
+            max_index = len(input_data) + 1
+            period_column["column_position"] = max_index
+            input_data.append(period_column)
 
         execute_result = cls.upsert_base(input_data=input_data,
                                          col_not_in=[cls.id.key, cls.created_at.key],
@@ -287,6 +308,8 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
                               )).update({cls.is_entity: is_entity})
         if is_commit:
             db.session.commit()
+        else:
+            db.session.flush()
 
     @classmethod
     def get_columns(cls,

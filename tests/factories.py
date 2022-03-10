@@ -170,7 +170,9 @@ db_table_detail_dict = [
     {"column_name": "ENDID", "column_type": "nvarchar", "column_type_length": "50", "column_position": 53,
      "is_extract": True, "is_primary": False},
     {"column_name": "SHAPE", "column_type": "geometry", "column_type_length": "", "column_position": 54,
-     "is_extract": True, "is_primary": False}]
+     "is_extract": True, "is_primary": False},
+    {"column_name": "period", "column_type": "tsrange", "column_type_length": "", "column_position": 55,
+     "is_extract": False, "is_system_col": True}]
 
 
 class Factory:
@@ -232,14 +234,12 @@ class Factory:
         pickle_path = os.path.join(ROOT_DIR, "./mock_data/geo_mock_data.pkl")
         insert_data_df = pd.read_pickle(pickle_path)
 
-
-
         table_schema = models.TableDetail.get_table_detail(table_info=table_info,
-                                            is_entity=True)
+                                                           is_entity=True)
         table_schema_column_type = {}
         for col in table_schema:
             column_type = None
-            for c_type_key,v in settings.SWITCH_DIFF_DB_COLUMN_TYPE_ACCORDING_PG.items():
+            for c_type_key, v in settings.SWITCH_DIFF_DB_COLUMN_TYPE_ACCORDING_PG.items():
                 if col.column_type in v:
                     column_type = c_type_key
                     break
@@ -251,7 +251,7 @@ class Factory:
 
         column_type = {}
         drop_column = []
-        for c_name,c_type in insert_data_df.dtypes.items():
+        for c_name, c_type in insert_data_df.dtypes.items():
 
             if insert_data_df[c_name].isnull().all():
                 drop_column.append(c_name)
@@ -277,4 +277,4 @@ class Factory:
             if_exists="append",
             schema=settings.ODS_STAG_SCHEMA_NAME
         )
-        return insert_data_df.columns
+        return insert_data_df.columns, len(insert_data_df.index)

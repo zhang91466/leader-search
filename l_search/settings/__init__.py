@@ -42,7 +42,8 @@ SWITCH_DIFF_DB_COLUMN_TYPE_ACCORDING_PG = {"varchar": ["varchar", "char", "nvarc
                                            "numeric": ["float", "numeric"],
                                            "text": ["text", "xml"],
                                            "timestamp": ["timestamp", "datetime", "datetime2"],
-                                           "geometry": ["geometry"]
+                                           "geometry": ["geometry"],
+                                           "tsrange": ["tsrange"]
                                            }
 
 SWITCH_DIFF_DB_COLUMN_TYPE_ACCORDING_PD = {"varchar": "object",
