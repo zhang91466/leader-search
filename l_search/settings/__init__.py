@@ -23,7 +23,7 @@ SOURCE_DB_CONNECTION_URL = {DBObjectType("greenplum").value: {"connect_prefix": 
                                                               "remark": ""},
                             DBObjectType("postgresql").value: {"connect_prefix": "postgresql+psycopg2",
                                                                "remark": ""},
-                            DBObjectType("mysql").value: {"connect_prefix": "mysql",
+                            DBObjectType("mariadb").value: {"connect_prefix": "mysql",
                                                           "remark": "?character_set_server=utf8mb4"},
                             DBObjectType("mysql").value: {"connect_prefix": "mysql",
                                                           "remark": "?charset=utf8"},
