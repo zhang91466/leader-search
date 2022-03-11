@@ -14,8 +14,10 @@ class TestDataExtract(BaseTestCase):
     def table_init(self):
         query = self.factory.create_table_detail()
         table_info = models.TableInfo.get_tables(table_id=query[0]["table_info_id"])
+        TableOperate.drop_table(table_info=table_info[0], is_stag=False, is_commit=False)
         TableOperate.create_table(table_info=table_info[0],
-                                  is_stag=False)
+                                  is_stag=False,
+                                  is_commit=True)
         return table_info[0]
 
     def insert_table_to_table(self):
@@ -35,7 +37,7 @@ class TestDataExtract(BaseTestCase):
         TableOperate.drop_table(table_info=table_info, is_stag=True, is_commit=True)
         return table_info
 
-    def test_2_alter_table_add_column(self):
+    def test_1_alter_table_add_column(self):
         table_info = self.insert_table_to_table()
         column_info = models.TableDetail.get_table_detail(table_info=table_info)
         new_column = {"table_info_id": table_info.id,
@@ -47,3 +49,12 @@ class TestDataExtract(BaseTestCase):
                       "is_primary": False}
         result = models.TableDetail.upsert(new_column)
         TableOperate.alter_table(table_info=table_info)
+
+    def test_2_alter_table_drop_column(self):
+        table_info = self.insert_table_to_table()
+        drop_column_info = models.TableDetail.get_table_detail(table_info=table_info,
+                                                               column_name="INSTALLUNIT")
+        self.factory.close_extract_on_column(column_info=drop_column_info[0])
+        TableOperate.alter_table(table_info=table_info)
+
+    # 这个完成了就要开始编写抽取模块（有geo和没geo的）（增量和全量的）

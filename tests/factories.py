@@ -170,9 +170,9 @@ db_table_detail_dict = [
     {"column_name": "ENDID", "column_type": "nvarchar", "column_type_length": "50", "column_position": 53,
      "is_extract": True, "is_primary": False},
     {"column_name": "SHAPE", "column_type": "geometry", "column_type_length": "", "column_position": 54,
-     "is_extract": True, "is_primary": False},
-    {"column_name": "period", "column_type": "tsrange", "column_type_length": "", "column_position": 55,
-     "is_extract": False, "is_system_col": True}]
+     "is_extract": True, "is_primary": False},]
+    # {"column_name": "period", "column_type": "tsrange", "column_type_length": "", "column_position": 55,
+    #  "is_extract": False, "is_primary": False, "is_system_col": True}]
 
 
 class Factory:
@@ -223,6 +223,18 @@ class Factory:
             result.append(column_new_data_dict)
 
         return result
+
+    def close_extract_on_column(self, column_info):
+        column_info.is_extract = False
+        db.session.add(column_info)
+        db.session.commit()
+        # column_info_dict = column_info.__dict__
+        # column_info_dict.pop("_sa_instance_state")
+        # column_info_dict.pop("created_at")
+        # column_info_dict.pop("updated_at")
+        # column_info_dict["is_extract"] = False
+
+        # models.TableDetail.upsert(input_data=column_info_dict)
 
     def insert_data_to_stag(self, table_info):
         """

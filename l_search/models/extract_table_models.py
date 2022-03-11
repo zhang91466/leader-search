@@ -88,8 +88,13 @@ class TableOperate:
     @classmethod
     def alter_table(cls, table_info):
         check_new_columns = models.TableDetail.get_table_detail(table_info=table_info,
-                                                                is_entity=False)
-        if len(check_new_columns) > 0:
+                                                                is_entity=False,
+                                                                is_extract=True)
+        check_disable_columns = models.TableDetail.get_table_detail(table_info=table_info,
+                                                                    is_entity=True,
+                                                                    is_extract=False,
+                                                                    is_system_col=False)
+        if len(check_new_columns) > 0 or len(check_disable_columns) > 0:
             # 创建stag表
             # 迁移数据
             # 删除并重建ods表
@@ -177,10 +182,10 @@ class TableOperate:
                               target_table_columns_str,
                               is_commit=True):
         insert_stat = """insert into %(target)s(%(target_columns)s) select %(source_columns)s from %(source)s""" % (
-        {"target": target_table_name,
-         "source": source_table_name,
-         "target_columns": target_table_columns_str,
-         "source_columns": source_table_columns_str})
+            {"target": target_table_name,
+             "source": source_table_name,
+             "target_columns": target_table_columns_str,
+             "source_columns": source_table_columns_str})
         execute_result = db.session.execute(insert_stat)
         if is_commit:
             db.session.commit()

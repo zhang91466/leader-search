@@ -75,3 +75,9 @@ class TestTableDetail(BaseTestCase):
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(type(rv.json[0]["id"]), str)
         self.assertResponseEqual(db_table_detail_dict[1], rv.json[1])
+
+
+        disable_column = db_table_detail_dict[3]
+        disable_column["is_extract"] = False
+        rv = self.make_request("post", "/meta/table/detail/upsert", data=disable_column)
+        self.assertEqual(rv.json[0]["is_extract"], False)

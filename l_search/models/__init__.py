@@ -257,9 +257,12 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
             meta_query = meta_query.filter(cls.column_name == column_name)
 
         if is_extract is not None:
-            if is_system_col:
+            if is_system_col is True:
                 meta_query = meta_query.filter(or_(cls.is_extract == is_extract,
                                                    cls.is_system_col == True))
+            elif is_system_col is False:
+                meta_query = meta_query.filter(and_(cls.is_extract == is_extract,
+                                                   cls.is_system_col == False))
             else:
                 meta_query = meta_query.filter(cls.is_extract == is_extract)
 
@@ -285,7 +288,9 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
                          "column_name": "period",
                          "column_type": "tsrange",
                          "column_type_length": "",
+                         "column_comment": None,
                          "is_extract": False,
+                         "is_primary": False,
                          "is_system_col": True}
         check_period_column_exist = cls.get_table_detail(table_info_id=period_column["table_info_id"],
                                                          column_name=period_column["column_name"])
@@ -298,14 +303,35 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
 
         execute_result = cls.upsert_base(input_data=input_data,
                                          col_not_in=[cls.id.key, cls.created_at.key],
-                                         update_index=[cls.table_info_id, cls.column_name])
+                                         update_index=[cls.table_info_id, cls.column_name],
+                                         is_commit=False)
+
         return execute_result
 
     @classmethod
-    def update_entity(cls, table_info, is_entity, is_commit=True):
-        cls.query.filter(and_(cls.table_info == table_info,
-                              cls.is_extract == True
-                              )).update({cls.is_entity: is_entity})
+    def update_entity(cls,
+                      is_entity,
+                      table_info=None,
+                      table_info_id=None,
+                      is_extract=True,
+                      is_system_col=None,
+                      is_commit=True):
+
+        update_query = cls.query
+
+        if table_info_id is not None:
+            update_query = update_query.filter(cls.table_info_id == table_info_id)
+
+        if table_info:
+            update_query = update_query.filter(cls.table_info == table_info)
+
+        if is_extract is not None:
+            update_query = update_query.filter(cls.is_extract == is_extract)
+
+            if is_system_col is not None:
+                update_query = update_query.filter(cls.is_system_col == is_system_col)
+
+        update_query.update({cls.is_entity: is_entity})
         if is_commit:
             db.session.commit()
         else:

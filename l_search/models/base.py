@@ -64,7 +64,7 @@ class InsertObject:
         return False
 
     @classmethod
-    def upsert_base(cls, input_data, col_not_in, update_index):
+    def upsert_base(cls, input_data, col_not_in, update_index, is_commit=True):
         insert_stmt = insert(cls.__table__).values(input_data)
 
         update_columns = {col.name: col for col in insert_stmt.excluded if col.name not in col_not_in}
@@ -74,7 +74,12 @@ class InsertObject:
                                                         set_=update_columns).returning(cls.id)
 
         execute_result = db.session.execute(upsert_stmt)
+
         db.session.commit()
+        # if is_commit:
+        #     db.session.commit()
+        # else:
+        #     db.session.flush()
 
         return_id_list = [row.id for row in execute_result]
 
