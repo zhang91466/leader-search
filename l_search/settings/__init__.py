@@ -19,6 +19,8 @@ SQLALCHEMY_TRACK_MODIFICATIONS = False
 CELERY_BROKER_URL = "redis://192.168.1.224:6379/2"
 CELERY_RESULT_BACKEND = "redis://192.168.1.224:6379/2"
 
+DATA_EXTRACT_CHUNK_SIZE = 100000
+
 SOURCE_DB_CONNECTION_URL = {DBObjectType("greenplum").value: {"connect_prefix": "postgresql+psycopg2",
                                                               "remark": ""},
                             DBObjectType("postgresql").value: {"connect_prefix": "postgresql+psycopg2",

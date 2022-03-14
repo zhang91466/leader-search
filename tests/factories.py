@@ -58,8 +58,7 @@ db_connection_factory = ModelFactory(
 
 db_table_info_factory = ModelFactory(
     model=models.TableInfo,
-    table_name="l_flowpipe",
-    has_geo_col=True
+    table_name="l_flowpipe"
 )
 
 db_table_detail_dict = [
@@ -201,7 +200,7 @@ class Factory:
                        "connection_id": create_table_info.connection_id,
                        "table_name": create_table_info.table_name,
                        "table_extract_col": create_table_info.table_extract_col,
-                       "need_extract": create_table_info.need_extract,
+                       "is_entity": create_table_info.is_entity,
                        "latest_extract_date": create_table_info.latest_extract_date
                        }
         return result_data

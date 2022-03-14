@@ -122,10 +122,9 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
     connection_id = Column(db.Integer, db.ForeignKey("db_connect_info.id"))
     connection = db.relationship(DBConnect, backref="table_info_db_connect")
     table_name = Column(db.String(500))
+    is_entity = Column(db.Boolean, default=False)
     table_extract_col = Column(db.String(150), nullable=True)
-    need_extract = Column(db.Boolean, default=False)
     latest_extract_date = Column(db.DateTime(), nullable=True)
-    has_geo_col = Column(db.Boolean, default=False)
 
     __table_args__ = (
         db.Index("table_info_connection_id_table_name_index", "connection_id", "table_name", unique=True),)
@@ -136,12 +135,11 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
                    connection_info=None,
                    table_id=None,
                    table_name=None,
-                   need_extract=None,
-                   has_geo_col=None):
+                   is_entity=None):
         """
         元数据表信息提取sql生成
         :param connection_info: object DBConnect
-        :param need_extract: 获取需抽取的
+        :param is_entity: 已经实体化
         :param connection_id:  DBConnect id
         :param table_name: 筛选表 单个或多个(a|b|c)
         :return:sql query
@@ -175,11 +173,8 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
             else:
                 logger.debug("查询所记录的所有表")
 
-        if need_extract is not None:
-            get_tables_query = get_tables_query.filter(cls.need_extract == need_extract)
-
-        if has_geo_col is not None:
-            get_tables_query = get_tables_query.filter(cls.has_geo_col == has_geo_col)
+        if is_entity is not None:
+            get_tables_query = get_tables_query.filter(cls.is_entity == is_entity)
 
         return get_tables_query.all()
 
@@ -243,7 +238,8 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
                          is_extract=None,
                          table_primary=None,
                          is_entity=None,
-                         is_system_col=None
+                         is_system_col=None,
+                         select_geo=None
                          ):
         meta_query = cls.query
 
@@ -262,7 +258,7 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
                                                    cls.is_system_col == True))
             elif is_system_col is False:
                 meta_query = meta_query.filter(and_(cls.is_extract == is_extract,
-                                                   cls.is_system_col == False))
+                                                    cls.is_system_col == False))
             else:
                 meta_query = meta_query.filter(cls.is_extract == is_extract)
 
@@ -271,6 +267,9 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
 
         if is_entity is not None:
             meta_query = meta_query.filter(cls.is_entity == is_entity)
+
+        if select_geo is True:
+            meta_query = meta_query.filter(cls.column_type == "geometry")
 
         return meta_query.order_by(cls.column_position).all()
 

@@ -78,6 +78,8 @@ class TableOperate:
 
         db.session.execute(create_table_sql)
 
+        table_info.is_entity = True
+
         if is_commit:
             db.session.commit()
         else:
@@ -122,6 +124,8 @@ class TableOperate:
                                       is_commit=False)
             cls.drop_table(table_info=table_info, is_stag=True, is_commit=True)
 
+            return real_table_name
+
     @classmethod
     def truncate(cls, table_info, is_stag=False, is_commit=True):
         """
@@ -153,6 +157,9 @@ class TableOperate:
             models.TableDetail.update_entity(table_info=table_info,
                                              is_entity=False,
                                              is_commit=is_commit)
+
+        table_info.is_entity = False
+
         if is_commit:
             db.session.commit()
         else:
