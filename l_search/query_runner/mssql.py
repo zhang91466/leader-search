@@ -22,19 +22,20 @@ class Mssql(BasicQueryRunner):
         extract_stmt, geo_col = self.select_stmt(table_info=table_info)
 
         if geo_col:
-            extract_stmt = extract_stmt % {"geo_col": "%s.STGeometryN(1).ToString() as geometry" % geo_col}
+            extract_stmt = extract_stmt % {
+                "geo_col": "%s.STGeometryN(1).ToString() as %s" % (geo_col, settings.GEO_COLUMN_NAME_STAG)}
 
         for count, partial_df in enumerate(pd.read_sql(extract_stmt, self.db_engine, chunksize=self.chunk_size)):
 
             to_db_para = {"con": self.db_engine,
-                          "if_exists": "replace",
+                          "if_exists": "append",
                           "schema": settings.ODS_STAG_SCHEMA_NAME,
                           "name": table_info.table_name}
 
             if geo_col:
-                geometry = [loads(x) for x in partial_df["geometry"]]
+                geometry = [loads(x) for x in partial_df[settings.GEO_COLUMN_NAME_STAG]]
 
-                del partial_df["geometry"]
+                del partial_df[settings.GEO_COLUMN_NAME_STAG]
 
                 partial_df = gpd.GeoDataFrame(partial_df, geometry=geometry)
 

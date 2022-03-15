@@ -7,6 +7,9 @@
 from tests import BaseTestCase
 from l_search.models.extract_table_models import TableOperate
 from l_search import models
+from l_search.models.base import db
+from l_search import settings
+from geoalchemy2 import Geography
 
 
 class TestDataExtract(BaseTestCase):
@@ -57,4 +60,15 @@ class TestDataExtract(BaseTestCase):
         self.factory.close_extract_on_column(column_info=drop_column_info[0])
         TableOperate.alter_table(table_info=table_info)
 
-    # 这个完成了就要开始编写抽取模块（有geo和没geo的）（增量和全量的）
+
+    def test_3_insert(self):
+        table_info = self.table_init()
+        table_data_df = self.factory.insert_data_to_stag(table_info=table_info)
+        table_data_df = table_data_df.set_crs(crs=settings.GEO_CRS_CODE, allow_override=True)
+        table_data_df.to_postgis(
+            con=db.engine,
+            name=str(table_info.table_name).lower(),
+            if_exists="append",
+            schema=settings.ODS_SCHEMA_NAME
+        )
+

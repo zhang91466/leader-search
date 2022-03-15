@@ -168,7 +168,7 @@ db_table_detail_dict = [
      "is_extract": True, "is_primary": False},
     {"column_name": "ENDID", "column_type": "nvarchar", "column_type_length": "50", "column_position": 53,
      "is_extract": True, "is_primary": False},
-    {"column_name": "SHAPE", "column_type": "geometry", "column_type_length": "", "column_position": 54,
+    {"column_name": "geometry", "column_type": "geometry", "column_type_length": "", "column_position": 54,
      "is_extract": True, "is_primary": False},]
     # {"column_name": "period", "column_type": "tsrange", "column_type_length": "", "column_position": 55,
     #  "is_extract": False, "is_primary": False, "is_system_col": True}]
@@ -260,7 +260,7 @@ class Factory:
 
             table_schema_column_type[col.column_name] = column_type
 
-        column_type = {}
+        need_change_column_type = {}
         drop_column = []
         for c_name, c_type in insert_data_df.dtypes.items():
 
@@ -272,20 +272,44 @@ class Factory:
                 continue
 
             actual_type = settings.SWITCH_DIFF_DB_COLUMN_TYPE_ACCORDING_PD[table_schema_column_type[c_name]]
-            if c_type != actual_type:
-                column_type[c_name] = actual_type
+            if c_type != actual_type[0]:
+                insert_data_df[c_name] = insert_data_df[c_name].fillna(actual_type[1])
+                need_change_column_type[c_name] = actual_type[0]
+
 
         # 删除整列为nan的列
         insert_data_df = insert_data_df.drop(columns=drop_column)
-        # 列格式与实际格式不符，进行转换
-        insert_data_df = insert_data_df.astype(column_type, errors="ignore")
+        # 列格式与实际格式不符，进行转换, errors="ignore"
+        insert_data_df = insert_data_df.astype(need_change_column_type)
         # 所有列命小写
         insert_data_df.columns = insert_data_df.columns.str.lower()
 
-        insert_data_df.to_postgis(
-            con=db.engine,
-            name=str(table_info.table_name).lower(),
-            if_exists="append",
-            schema=settings.ODS_STAG_SCHEMA_NAME
-        )
-        return insert_data_df.columns, len(insert_data_df.index)
+        return insert_data_df
+
+        # insert_data_df.to_postgis(
+        #     con=db.engine,
+        #     name=str(table_info.table_name).lower(),
+        #     if_exists="append",
+        #     schema=settings.ODS_STAG_SCHEMA_NAME
+        # )
+        # return insert_data_df.columns, len(insert_data_df.index)
+
+    def get_pickle_data(self, table_info):
+        """
+        pickle里的数据结构和上面的数据结构保持统一
+        :return:
+        """
+        import os
+        ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+        pickle_path = os.path.join(ROOT_DIR, "./mock_data/geo_mock_data.pkl")
+        insert_data_df = pd.read_pickle(pickle_path)
+
+
+
+        insert_data_df.columns = insert_data_df.columns.str.lower()
+
+        return insert_data_df
+
+
+
+

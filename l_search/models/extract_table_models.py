@@ -64,8 +64,15 @@ class TableOperate:
                         column_type = pg_col_type_key
                         break
 
+                column_name = str(col.column_name).lower()
+                geo_column_name = None
+                if column_type == "geometry":
+                    if is_stag is True:
+                        column_name = settings.GEO_COLUMN_NAME_STAG
+                    column_type = "geometry(geometry, %s)" % settings.GEO_CRS_CODE
+
                 create_table_column_info = create_table_column_info + column_stat % {
-                    "column_name": str(col.column_name).lower(),
+                    "column_name": column_name,
                     "column_type": column_type,
                     "column_length": column_length}
 
@@ -74,18 +81,19 @@ class TableOperate:
                     col.is_entity = True
                     db.session.add(col)
 
-        create_table_sql = create_stat % {"table_name": table_name} + create_table_column_info.strip()[:-1] + close_stat
+        if len(create_table_column_info) > 0:
+            create_table_sql = create_stat % {"table_name": table_name} + create_table_column_info.strip()[:-1] + close_stat
 
-        db.session.execute(create_table_sql)
+            db.session.execute(create_table_sql)
 
-        table_info.is_entity = True
+            table_info.is_entity = True
 
-        if is_commit:
-            db.session.commit()
-        else:
-            db.session.flush()
+            if is_commit:
+                db.session.commit()
+            else:
+                db.session.flush()
 
-        return table_name
+            return table_name
 
     @classmethod
     def alter_table(cls, table_info):
@@ -183,10 +191,10 @@ class TableOperate:
 
     @classmethod
     def insert_table_to_table(cls,
-                              source_table_name,
                               target_table_name,
-                              source_table_columns_str,
+                              source_table_name,
                               target_table_columns_str,
+                              source_table_columns_str,
                               is_commit=True):
         insert_stat = """insert into %(target)s(%(target_columns)s) select %(source_columns)s from %(source)s""" % (
             {"target": target_table_name,

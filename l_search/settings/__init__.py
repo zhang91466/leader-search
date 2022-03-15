@@ -39,6 +39,10 @@ EXTRACT_FILTER_COLUMN_NAME = ["update_ts"]
 
 GEO_COLUMN_NAME = ["shape", "geom"]
 
+GEO_COLUMN_NAME_STAG = "geometry"
+
+GEO_CRS_CODE = 4326
+
 SWITCH_DIFF_DB_COLUMN_TYPE_ACCORDING_PG = {"varchar": ["varchar", "char", "nvarchar"],
                                            "integer": ["int", "smallint", "integer", "bigint"],
                                            "numeric": ["float", "numeric"],
@@ -48,10 +52,10 @@ SWITCH_DIFF_DB_COLUMN_TYPE_ACCORDING_PG = {"varchar": ["varchar", "char", "nvarc
                                            "tsrange": ["tsrange"]
                                            }
 
-SWITCH_DIFF_DB_COLUMN_TYPE_ACCORDING_PD = {"varchar": "object",
-                                           "text": "object",
-                                           "integer": "int64",
-                                           "numeric": "float64",
-                                           "timestamp": "datetime64",
-                                           "geometry": ["geometry"]
+SWITCH_DIFF_DB_COLUMN_TYPE_ACCORDING_PD = {"varchar": ["object", ""],
+                                           "text": ["object", ""],
+                                           "integer": ["int64", 0],
+                                           "numeric": ["float64", 0],
+                                           "timestamp": ["datetime64[ns]", "1900-01-01 00:00:00"],
+                                           "geometry": ["geometry", ""]
                                            }

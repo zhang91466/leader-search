@@ -6,9 +6,13 @@
 """
 from l_search.models.extract_table_models import TableOperate
 from l_search.query_runner import get_query_runner
+from l_search import models
 
 
 class DataExtractLoad:
+
+    def __init__(self, table_info):
+        self.table_info = table_info
 
     def check_table(self, table_info):
 
@@ -17,13 +21,27 @@ class DataExtractLoad:
         else:
             TableOperate.create_table(table_info=table_info)
 
-    @classmethod
-    def merge(cls):
+    def data_merge(self):
         """
 
         :return:
         """
-        pass
+
+        column_info_list = models.TableDetail.get_table_detail(table_info=self.table_info,
+                                                               is_extract=True)
+
+
+        for col in column_info_list:
+
+        if col.column_type == "geometry":
+            target_table_columns_str = table_columns_str.replace("geometry", geo_col))
+
+
+            TableOperate.insert_table_to_table(
+            target_table_name = TableOperate.get_real_table_name(table_name=table_info.table_name, is_stag=False),
+            source_table_name = TableOperate.get_real_table_name(table_name=table_info.table_name, is_stag=True),
+            target_table_columns_str = table_columns_str.replace("geometry", "shape") + ",period",
+            source_table_columns_str = table_columns_str + """, tsrange(now()::timestamp,NULL, '[)')""" )
 
     def increment(self):
         """
@@ -41,7 +59,7 @@ class DataExtractLoad:
         :return:
         """
 
-    def full(self, table_info):
+    def full(self):
         """
         表结构的更新 同增量
 
@@ -52,23 +70,17 @@ class DataExtractLoad:
         插入新增数据
         :return:
         """
-        self.check_table(table_info=table_info)
+        self.check_table(table_info=self.table_info)
 
-        TableOperate.truncate(table_info=table_info)
+        TableOperate.truncate(table_info=self.table_info)
 
-        query_runner = get_query_runner(query_runner_type=table_info.connection.db_type)
+        TableOperate.drop_table(table_info=self.table_info, is_stag=True)
 
-        geo_col = query_runner.extract(table_info=table_info)
+        query_runner = get_query_runner(query_runner_type=self.table_info.connection.db_type)
 
-        if geo_col:
-            target_table_columns_str = table_columns_str.replace("geometry", geo_col))
+        geo_col = query_runner.extract(table_info=self.table_info)
 
-
-        TableOperate.insert_table_to_table(
-            source_table_name=TableOperate.get_real_table_name(table_name=table_info.table_name, is_stag=True),
-            target_table_name=TableOperate.get_real_table_name(table_name=table_info.table_name, is_stag=False),
-            source_table_columns_str=table_columns_str + """, tsrange(now()::timestamp,NULL, '[)')""",
-            target_table_columns_str=table_columns_str.replace("geometry", "shape") + ",period", )
+        self.merge(geo_col=geo_col)
 
     def set_schedule(self):
         pass
