@@ -9,19 +9,9 @@ from l_search.models.extract_table_models import TableOperate
 from l_search import models
 from l_search.models.base import db
 from l_search import settings
-from geoalchemy2 import Geography
 
 
 class TestDataExtract(BaseTestCase):
-
-    def table_init(self):
-        query = self.factory.create_table_detail()
-        table_info = models.TableInfo.get_tables(table_id=query[0]["table_info_id"])
-        TableOperate.drop_table(table_info=table_info[0], is_stag=False, is_commit=False)
-        TableOperate.create_table(table_info=table_info[0],
-                                  is_stag=False,
-                                  is_commit=True)
-        return table_info[0]
 
     def insert_table_to_table(self):
         table_info = self.table_init()
@@ -32,7 +22,7 @@ class TestDataExtract(BaseTestCase):
             source_table_name=TableOperate.get_real_table_name(table_name=table_info.table_name, is_stag=True),
             target_table_name=TableOperate.get_real_table_name(table_name=table_info.table_name, is_stag=False),
             source_table_columns_str=table_columns_str + """, tsrange(now()::timestamp,NULL, '[)')""",
-            target_table_columns_str=table_columns_str.replace("geometry", "shape") + ",period",
+            target_table_columns_str=table_columns_str + ",period",
             is_commit=False)
 
         self.assertEqual(df_row_count, insert_row_count)
@@ -63,7 +53,7 @@ class TestDataExtract(BaseTestCase):
 
     def test_3_insert(self):
         table_info = self.table_init()
-        table_data_df = self.factory.insert_data_to_stag(table_info=table_info)
+        table_data_df = self.factory.get_pickle_data(table_info=table_info)
         table_data_df = table_data_df.set_crs(crs=settings.GEO_CRS_CODE, allow_override=True)
         table_data_df.to_postgis(
             con=db.engine,

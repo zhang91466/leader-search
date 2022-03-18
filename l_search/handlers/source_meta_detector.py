@@ -1,37 +1,19 @@
 # -*- coding: utf-8 -*-
 import re
 
-from sqlalchemy import MetaData, create_engine
+from sqlalchemy import MetaData
 from sqlalchemy.sql.sqltypes import NullType
-from sqlalchemy.orm import Session
 
 from l_search import settings
 from l_search import models
 from l_search.handlers.meta_operation import Meta
+from l_search.models.extract_table_models import DBSession
 from l_search.utils.logger import Logger
 
 logger = Logger()
 
 
-class DBSession:
-    def __init__(self, connection_info):
-        self.connect_info = connection_info
 
-        if self.connect_info.db_type in settings.SOURCE_DB_CONNECTION_URL:
-            get_part_of_connect_string = settings.SOURCE_DB_CONNECTION_URL[self.connect_info.db_type]
-        else:
-            raise "%s not support" % self.connect_info.print_name()
-
-        engine_connect_string = '%s://%s:%s@%s:%s/%s%s' % (get_part_of_connect_string["connect_prefix"],
-                                                           self.connect_info.account,
-                                                           self.connect_info.pwd,
-                                                           self.connect_info.host,
-                                                           self.connect_info.port,
-                                                           self.connect_info.default_db,
-                                                           get_part_of_connect_string["remark"])
-
-        self.engine = create_engine(engine_connect_string)
-        self.session = Session(self.engine, future=True)
 
 
 class MetaDetector:

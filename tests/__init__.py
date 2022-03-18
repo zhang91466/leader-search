@@ -11,6 +11,8 @@ from unittest import TestCase
 from l_search.app import create_app
 from l_search.models import db, convert_to_dict
 from l_search.models.base import create_ods_schema, drop_ods_schema
+from l_search.models.extract_table_models import TableOperate
+from l_search import models
 from tests.factories import Factory
 
 
@@ -80,3 +82,12 @@ class BaseTestCase(TestCase):
                 actual[k],
                 "{} not equal (expected: {}, actual: {}).".format(k, v, actual[k]),
             )
+
+    def table_init(self):
+        query = self.factory.create_table_detail()
+        table_info = models.TableInfo.get_tables(table_id=query[0]["table_info_id"])
+        TableOperate.drop_table(table_info=table_info[0], is_stag=False, is_commit=False)
+        TableOperate.create_table(table_info=table_info[0],
+                                  is_stag=False,
+                                  is_commit=True)
+        return table_info[0]

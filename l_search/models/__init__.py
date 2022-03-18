@@ -10,7 +10,7 @@ import hashlib
 from .base import db, Column, InsertObject, TimestampMixin
 from .mysql_full_text_search import FullText, FullTextSearch, FullTextMode
 from sqlalchemy import or_, and_, func
-
+from l_search import settings
 from l_search.utils.logger import Logger
 
 logger = Logger()
@@ -284,7 +284,7 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
                 d.pop("id")
 
         period_column = {"table_info_id": input_data[0]["table_info_id"],
-                         "column_name": "period",
+                         "column_name": settings.PERIOD_COLUMN_NAME,
                          "column_type": "tsrange",
                          "column_type_length": "",
                          "column_comment": None,

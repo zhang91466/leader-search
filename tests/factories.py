@@ -58,7 +58,7 @@ db_connection_factory = ModelFactory(
 
 db_table_info_factory = ModelFactory(
     model=models.TableInfo,
-    table_name="l_flowpipe"
+    table_name="L_FLOWPIPE"
 )
 
 db_table_detail_dict = [
@@ -168,11 +168,13 @@ db_table_detail_dict = [
      "is_extract": True, "is_primary": False},
     {"column_name": "ENDID", "column_type": "nvarchar", "column_type_length": "50", "column_position": 53,
      "is_extract": True, "is_primary": False},
-    {"column_name": "geometry", "column_type": "geometry", "column_type_length": "", "column_position": 54,
-     "is_extract": True, "is_primary": False},]
-    # {"column_name": "period", "column_type": "tsrange", "column_type_length": "", "column_position": 55,
-    #  "is_extract": False, "is_primary": False, "is_system_col": True}]
+    {"column_name": "SHAPE", "column_type": "geometry", "column_type_length": "", "column_position": 54,
+     "is_extract": True, "is_primary": False},
+    {"column_name": "period", "column_type": "tsrange", "column_type_length": "", "column_position": 55,
+     "is_extract": False, "is_primary": False, "is_system_col": True}]
 
+# {"column_name": "geometry", "column_type": "geometry", "column_type_length": "", "column_position": 54,
+#  "is_extract": True, "is_primary": False},
 
 class Factory:
 
@@ -191,7 +193,7 @@ class Factory:
         return result_data
 
     def create_table_info(self):
-        create_connection = db_connection_factory.create()
+        create_connection = mssql_connection_factory.create()
         table_info_data = db_table_info_factory
         table_info_data.kwargs["connection_id"] = create_connection.id
         create_table_info = table_info_data.create()
@@ -235,7 +237,7 @@ class Factory:
 
         # models.TableDetail.upsert(input_data=column_info_dict)
 
-    def insert_data_to_stag(self, table_info):
+    def get_pickle_data(self, table_info):
         """
         pickle里的数据结构和上面的数据结构保持统一
         :return:
@@ -276,7 +278,6 @@ class Factory:
                 insert_data_df[c_name] = insert_data_df[c_name].fillna(actual_type[1])
                 need_change_column_type[c_name] = actual_type[0]
 
-
         # 删除整列为nan的列
         insert_data_df = insert_data_df.drop(columns=drop_column)
         # 列格式与实际格式不符，进行转换, errors="ignore"
@@ -286,30 +287,12 @@ class Factory:
 
         return insert_data_df
 
-        # insert_data_df.to_postgis(
-        #     con=db.engine,
-        #     name=str(table_info.table_name).lower(),
-        #     if_exists="append",
-        #     schema=settings.ODS_STAG_SCHEMA_NAME
-        # )
-        # return insert_data_df.columns, len(insert_data_df.index)
-
-    def get_pickle_data(self, table_info):
-        """
-        pickle里的数据结构和上面的数据结构保持统一
-        :return:
-        """
-        import os
-        ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-        pickle_path = os.path.join(ROOT_DIR, "./mock_data/geo_mock_data.pkl")
-        insert_data_df = pd.read_pickle(pickle_path)
-
-
-
-        insert_data_df.columns = insert_data_df.columns.str.lower()
-
-        return insert_data_df
-
-
-
-
+    def insert_data_to_stag(self, table_info):
+        insert_data_df = self.get_pickle_data(table_info=table_info)
+        insert_data_df.to_postgis(
+            con=db.engine,
+            name=str(table_info.table_name).lower(),
+            if_exists="append",
+            schema=settings.ODS_STAG_SCHEMA_NAME
+        )
+        return insert_data_df.columns, len(insert_data_df.index)

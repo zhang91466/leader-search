@@ -8,13 +8,43 @@ from l_search import models
 from l_search.models.base import db
 from l_search.utils.logger import Logger
 from l_search import settings
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 DONOT_CREATE_COLUMN = []
 
 logger = Logger()
 
 
+class DBSession:
+    def __init__(self, connection_info):
+        self.connect_info = connection_info
+
+        if self.connect_info.db_type in settings.SOURCE_DB_CONNECTION_URL:
+            get_part_of_connect_string = settings.SOURCE_DB_CONNECTION_URL[self.connect_info.db_type]
+        else:
+            raise "%s not support" % self.connect_info.print_name()
+
+        engine_connect_string = '%s://%s:%s@%s:%s/%s%s' % (get_part_of_connect_string["connect_prefix"],
+                                                           self.connect_info.account,
+                                                           self.connect_info.pwd,
+                                                           self.connect_info.host,
+                                                           self.connect_info.port,
+                                                           self.connect_info.default_db,
+                                                           get_part_of_connect_string["remark"])
+
+        self.engine = create_engine(engine_connect_string)
+        self.session = Session(self.engine, future=True)
+
+
 class TableOperate:
+
+    @staticmethod
+    def db_commit(is_commit=True):
+        if is_commit:
+            db.session.commit()
+        else:
+            db.session.flush()
 
     @staticmethod
     def get_real_table_name(table_name, is_stag=False):
@@ -33,7 +63,7 @@ class TableOperate:
         """
 
         table_name = cls.get_real_table_name(table_name=table_info.table_name, is_stag=is_stag)
-        logger.debug("table %s start create" % table_name)
+        logger.info("table %s start create" % table_name)
 
         table_detail = models.TableDetail.get_table_detail(table_info=table_info,
                                                            is_extract=True,
@@ -65,7 +95,7 @@ class TableOperate:
                         break
 
                 column_name = str(col.column_name).lower()
-                geo_column_name = None
+
                 if column_type == "geometry":
                     if is_stag is True:
                         column_name = settings.GEO_COLUMN_NAME_STAG
@@ -82,8 +112,9 @@ class TableOperate:
                     db.session.add(col)
 
         if len(create_table_column_info) > 0:
-            create_table_sql = create_stat % {"table_name": table_name} + create_table_column_info.strip()[:-1] + close_stat
-
+            create_table_sql = create_stat % {"table_name": table_name} + create_table_column_info.strip()[
+                                                                          :-1] + close_stat
+            logger.info("table %s start sql %s" % (table_name, create_table_sql))
             db.session.execute(create_table_sql)
 
             table_info.is_entity = True
@@ -97,6 +128,8 @@ class TableOperate:
 
     @classmethod
     def alter_table(cls, table_info):
+        logger.info("table %s start alter" % table_info.table_name)
+
         check_new_columns = models.TableDetail.get_table_detail(table_info=table_info,
                                                                 is_entity=False,
                                                                 is_extract=True)
@@ -142,13 +175,12 @@ class TableOperate:
         :return:
         """
         table_name = cls.get_real_table_name(table_name=table_info.table_name, is_stag=is_stag)
-        logger.debug("table %s start truncate" % table_name)
+        logger.info("table %s start truncate" % table_name)
         truncate_stat = """truncate table %s""" % table_name
+        logger.info("table %s truncate sql %s" % (table_name, truncate_stat))
         db.session.execute(truncate_stat)
-        if is_commit:
-            db.session.commit()
-        else:
-            db.session.flush()
+
+        cls.db_commit(is_commit=is_commit)
 
     @classmethod
     def drop_table(cls, table_info, is_stag=False, is_commit=True):
@@ -158,8 +190,9 @@ class TableOperate:
         :return:
         """
         table_name = cls.get_real_table_name(table_name=table_info.table_name, is_stag=is_stag)
-        logger.debug("table %s start drop" % table_name)
+        logger.info("table %s start drop" % table_name)
         drop_stat = "drop table if exists %s" % table_name
+        logger.info("table %s drop sql %s" % (table_name, drop_stat))
         db.session.execute(drop_stat)
         if is_stag is False:
             models.TableDetail.update_entity(table_info=table_info,
@@ -168,14 +201,11 @@ class TableOperate:
 
         table_info.is_entity = False
 
-        if is_commit:
-            db.session.commit()
-        else:
-            db.session.flush()
+        cls.db_commit(is_commit=is_commit)
 
     @classmethod
-    def insert_value_to_table(cls, table_name, columns_in_order, values_in_order):
-        logger.debug("Table %s start insert" % table_name)
+    def insert_value_to_table(cls, table_name, columns_in_order, values_in_order, is_commit=True):
+        logger.info("Table %s start insert with value" % table_name)
         # """INSERT INTO full_text_index (id, extract_data_info_id, block_name, block_key, row_content) VALUES (:id, :extract_data_info_id, :block_name, :block_key, :row_content)"""
 
         insert_stat = """insert into %(table_name)s (%(columns)s) values (%(values)s)""" % {
@@ -184,7 +214,9 @@ class TableOperate:
             "values": ":" + ", :".join(columns_in_order)
         }
         execute_result = db.session.execute(insert_stat, values_in_order)
-        db.session.commit()
+
+        cls.db_commit(is_commit=is_commit)
+
         row_count = execute_result.rowcount
         logger.info("Table %s insert count %d" % (table_name, row_count))
         return row_count
@@ -196,21 +228,40 @@ class TableOperate:
                               target_table_columns_str,
                               source_table_columns_str,
                               is_commit=True):
+        logger.info("table %s start insert" % target_table_name)
         insert_stat = """insert into %(target)s(%(target_columns)s) select %(source_columns)s from %(source)s""" % (
             {"target": target_table_name,
              "source": source_table_name,
              "target_columns": target_table_columns_str,
              "source_columns": source_table_columns_str})
         execute_result = db.session.execute(insert_stat)
-        if is_commit:
-            db.session.commit()
-        else:
-            db.session.flush()
+
+        logger.info("table %s start insert" % target_table_name)
+
+        cls.db_commit(is_commit=is_commit)
         return execute_result.rowcount
 
     @classmethod
-    def delete(cls, table_name, where_stat=None):
-        logger.debug("table %s start delete" % table_name)
+    def update_tsrange(cls, table_name, primary_col_name, upper_datetime, is_commit=True):
+        logger.info("table %s start update tsrange" % table_name)
+        update_stmt = """
+        UPDATE %(ods_table_name)s m set %(period)s = tsrange(lower(m.%(period)s)::timestamp, '%(upper_datetime)s'::timestamp, '[]') 
+        from %(stag_table_name)s stag
+        where m.%(primary_col_name)s = stag.%(primary_col_name)s""" % {
+            "ods_table_name": cls.get_real_table_name(table_name=table_name, is_stag=False),
+            "stag_table_name": cls.get_real_table_name(table_name=table_name, is_stag=True),
+            "period": settings.PERIOD_COLUMN_NAME,
+            "upper_datetime": upper_datetime,
+            "primary_col_name": primary_col_name}
+
+        logger.info("table %s update tsrange sql %s" % (table_name, update_stmt))
+        db.session.execute(update_stmt)
+
+        cls.db_commit(is_commit=is_commit)
+
+    @classmethod
+    def delete(cls, table_name, where_stat=None, is_commit=True):
+        logger.info("table %s start delete" % table_name)
 
         if where_stat:
             where_stat = " where " + where_stat
@@ -219,12 +270,13 @@ class TableOperate:
 
         delete_stat = "delete from %(table_name)s %(where_stat)s" % {"table_name": table_name,
                                                                      "where_stat": where_stat}
+        logger.info("table %s delete sql %s" % (table_name, delete_stat))
         db.session.execute(delete_stat)
-        db.session.commit()
+        cls.db_commit(is_commit=is_commit)
 
     @classmethod
     def select(cls, table_name, column_list=None, where_stat=None):
-        logger.debug("table %s start select" % table_name)
+        logger.info("table %s start select" % table_name)
 
         if column_list:
             column_list_str = "`" + "`,`".join(column_list) + "`"
