@@ -12,4 +12,4 @@ class TestDataExtractLoad(BaseTestCase):
     def test_full_etl(self):
         table_info = self.table_init()
         etl_model = DataExtractLoad(table_info=table_info)
-        etl_model.full()
+        etl_model.run(increment=False)

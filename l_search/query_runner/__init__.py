@@ -94,6 +94,7 @@ class BasicQueryRunner:
 
         select_stmt = "select %(col_str)s from %(table_name)s" % {"col_str": col_str[:-1],
                                                                   "table_name": self.table_name()}
+
         return select_stmt, geo_col
 
     def df_structure_arrangement(self, insert_data_df):

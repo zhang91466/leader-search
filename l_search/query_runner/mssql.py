@@ -17,7 +17,17 @@ logger = Logger()
 
 class Mssql(BasicQueryRunner):
 
-    def extract(self):
+    def increment_where_stmt(self):
+        if self.table_info.table_extract_col is not None:
+            where_stmt = " where %(update_ts_col)s > '%(latest_update_ts)s'" % {
+                "update_ts_col": self.table_info.table_extract_col,
+                "latest_update_ts": self.table_info.latest_extract_date}
+        else:
+            where_stmt = ""
+
+        return where_stmt
+
+    def extract(self, increment=True):
         logger.info("%s start extract" % self.table_info.table_name)
 
         extract_stmt, geo_col = self.select_stmt()
@@ -26,34 +36,40 @@ class Mssql(BasicQueryRunner):
             extract_stmt = extract_stmt % {
                 "geo_col": "%s.STGeometryN(1).ToString() as %s" % (geo_col, settings.GEO_COLUMN_NAME_STAG)}
 
-        # try:
-        for count, partial_df in enumerate(pd.read_sql(extract_stmt, self.source_db_engine, chunksize=self.chunk_size)):
+        if increment is True:
+            extract_stmt = extract_stmt + self.increment_where_stmt()
 
-            to_db_para = {"con": self.db_engine,
-                          "if_exists": "append",
-                          "schema": settings.ODS_STAG_SCHEMA_NAME,
-                          "name": str(self.table_info.table_name).lower()}
+        logger.info("%s extract stmt %s" % (self.table_info.table_name, extract_stmt))
 
-            partial_df = self.df_structure_arrangement(insert_data_df=partial_df)
+        try:
+            for count, partial_df in enumerate(pd.read_sql(extract_stmt, self.source_db_engine, chunksize=self.chunk_size)):
 
-            logger.info("%s extracting loop %d" % (self.table_info.table_name, count))
-            if geo_col:
-                geometry = [loads(x) for x in partial_df[settings.GEO_COLUMN_NAME_STAG]]
+                to_db_para = {"con": self.db_engine,
+                              "if_exists": "append",
+                              "schema": settings.ODS_STAG_SCHEMA_NAME,
+                              "name": str(self.table_info.table_name).lower()}
 
-                del partial_df[settings.GEO_COLUMN_NAME_STAG]
+                partial_df = self.df_structure_arrangement(insert_data_df=partial_df)
 
-                partial_df = gpd.GeoDataFrame(partial_df, geometry=geometry)
-                partial_df = partial_df.set_crs(crs=settings.GEO_CRS_CODE, allow_override=True)
+                logger.info("%s extracting loop %d" % (self.table_info.table_name, count))
+                if geo_col:
+                    geometry = [loads(x) for x in partial_df[settings.GEO_COLUMN_NAME_STAG]]
 
-                logger.debug("%s geo load over" % (self.table_info.table_name))
-                partial_df.to_postgis(**to_db_para)
-            else:
-                partial_df.to_sql(**to_db_para)
+                    del partial_df[settings.GEO_COLUMN_NAME_STAG]
 
-        logger.debug("%s extract end" % self.table_info.table_name)
-        return True
-        # except Exception as e:
-        #     logger.error("%s extract failed. Error Info: %s" % (self.table_info.table_name, e))
-        #     return False
+                    partial_df = gpd.GeoDataFrame(partial_df, geometry=geometry)
+                    partial_df = partial_df.set_crs(crs=settings.GEO_CRS_CODE, allow_override=True)
+
+                    logger.debug("%s geo load over" % (self.table_info.table_name))
+                    partial_df.to_postgis(**to_db_para)
+                else:
+                    partial_df.to_sql(**to_db_para)
+
+            logger.debug("%s extract end" % self.table_info.table_name)
+            return True
+        except Exception as e:
+            logger.error("%s extract failed. Error Info: %s" % (self.table_info.table_name, e))
+            return False
+
 
 register(Mssql)

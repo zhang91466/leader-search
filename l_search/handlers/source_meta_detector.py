@@ -62,8 +62,8 @@ class MetaDetector:
                     else:
                         column_type = column_type[0].split(" ")[0].lower()
 
-                    column_length = re.findall("\((.*?)\)", column_type)[0]
-                    column_type = str(re.sub("(\().*?(\))", "", column_type))
+                    column_length = re.findall(r"\((.*?)\)", column_type)[0]
+                    column_type = str(re.sub(r"(\().*?(\))", "", column_type))
                 except:
                     pass
             else:

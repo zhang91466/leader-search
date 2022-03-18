@@ -31,7 +31,7 @@ class DataExtractLoad:
         """
 
         column_info_list = models.TableDetail.get_table_detail(table_info=self.table_info,
-                                                               is_extract=True)
+                                                               is_entity=True)
 
         target_col_str = ""
         source_col_str = ""
@@ -72,7 +72,7 @@ class DataExtractLoad:
                 target_table_columns_str=target_col_str[:-1],
                 source_table_columns_str=source_col_str[:-1])
 
-    def increment(self):
+    def run(self, increment=True):
         """
         判断表是否存在
         存在
@@ -82,26 +82,24 @@ class DataExtractLoad:
         不存在
             创建
 
-        按数据更新时间条件抽取数据
-
-        合并数据，因为有数据更新时间条件，故直接插入，并修改历史相同主键id的行tzrange列的时间区间
-        :return:
-        """
-
-    def full(self):
-        """
-        表结构的更新 同增量
-
         抽取全量数据到stag
 
         删除原有数据
 
         插入新增数据
+
+        增量：
+        按数据更新时间条件抽取数据
+
+        合并数据，因为有数据更新时间条件，故直接插入，并修改历史相同主键id的行tzrange列的时间区间
+
+        获取更新时间的最大值 并记录
         :return:
         """
         self.check_table(table_info=self.table_info)
 
-        TableOperate.truncate(table_info=self.table_info)
+        if increment is False:
+            TableOperate.truncate(table_info=self.table_info)
 
         TableOperate.drop_table(table_info=self.table_info, is_stag=True)
         TableOperate.create_table(table_info=self.table_info, is_stag=True)
@@ -110,8 +108,11 @@ class DataExtractLoad:
                                         table_info=self.table_info)
 
         query_runner.set_connection()
-        if query_runner.extract():
+        if query_runner.extract(increment=increment):
             self.put_in_storage()
+
+        TableOperate.get_max_update_ts(table_name=self.table_info.table_name,
+                                       update_ts_col=self.table_info.latest_extract_date)
 
     def set_schedule(self):
         pass

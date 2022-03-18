@@ -236,7 +236,7 @@ class TableOperate:
              "source_columns": source_table_columns_str})
         execute_result = db.session.execute(insert_stat)
 
-        logger.info("table %s start insert" % target_table_name)
+        logger.info("table %s start insert %s" % (target_table_name, insert_stat))
 
         cls.db_commit(is_commit=is_commit)
         return execute_result.rowcount
@@ -279,7 +279,7 @@ class TableOperate:
         logger.info("table %s start select" % table_name)
 
         if column_list:
-            column_list_str = "`" + "`,`".join(column_list) + "`"
+            column_list_str = ",".join(column_list)
         else:
             column_list_str = " * "
 
@@ -293,3 +293,13 @@ class TableOperate:
                                                                                      "where_stat": where_stat_str}
         execute_data = db.session.execute(select_stat)
         return [dict(row) for row in execute_data]
+
+    @classmethod
+    def get_max_update_ts(cls, table_name, update_ts_col):
+        max_stmt = "select max(%(update_ts_col)s) as max_update_ts from %(table_name)s" % {
+            "update_ts_col": update_ts_col,
+            "table_name": cls.get_real_table_name(table_name=table_name, is_stag=True)}
+
+        execute_data = db.session.execute(max_stmt).first()
+
+        return execute_data.max_update_ts
