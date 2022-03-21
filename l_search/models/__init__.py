@@ -8,7 +8,6 @@
 import enum
 import hashlib
 from .base import db, Column, InsertObject, TimestampMixin
-from .mysql_full_text_search import FullText, FullTextSearch, FullTextMode
 from sqlalchemy import or_, and_, func
 from l_search import settings
 from l_search.utils.logger import Logger
