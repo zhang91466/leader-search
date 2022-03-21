@@ -4,12 +4,15 @@
 @author:
 @file:extract_table_models
 """
-from l_search import models
-from l_search.models.base import db
-from l_search.utils.logger import Logger
-from l_search import settings
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import BadRequest
+from sql_metadata import Parser
+
+from l_search import models
+from l_search import settings
+from l_search.models.base import db
+from l_search.utils.logger import Logger
 
 DONOT_CREATE_COLUMN = []
 
@@ -275,18 +278,36 @@ class TableOperate:
         cls.db_commit(is_commit=is_commit)
 
     @classmethod
-    def select(cls, table_name, column_list=None, where_stat=None):
-        logger.info("table %s start select" % table_name)
+    def select(cls, connection_id, sql):
+        logger.info("Start select by sql: %s" % sql)
 
-        if column_list:
-            column_list_str = ",".join(column_list)
-        else:
-            column_list_str = " * "
+        sql = str(sql).lower()
+        black_key_words = ["insert", "update", "delete", "drop", "alter", "create", "truncate"]
 
-        if where_stat:
-            where_stat_str = " where " + where_stat.split("select")[0]
+        # 避免sql注入导致数据的变更
+        for black_key in black_key_words:
+            sql_split = str(sql).split(black_key)
+            if len(sql_split) > 1:
+                error_message = "Sql contains invalid characters: %s" % black_key
+                logger.warn(error_message)
+                raise BadRequest(error_message)
+
+        # 去除回车用空格替换
+        sql_list = [str(l).strip() for l in str(sql).splitlines()]
+        sql = " ".join(sql_list)
+
+        table_name_list = Parser(sql).tables
+
+        get_tables = models.TableInfo.get_tables(connection_id=connection_id,
+                                                 table_name=table_name_list)
+
+        if len(table_name_list) == len(get_tables):
+            pass
         else:
-            where_stat_str = ""
+            error_message = "Sql table not found: %s" % ",".join(list(set(table_name_list) - set(get_tables)))
+            logger.warn(error_message)
+            raise BadRequest(error_message)
+
 
         select_stat = "select %(column_list)s from %(table_name)s %(where_stat)s" % {"column_list": column_list_str,
                                                                                      "table_name": table_name,

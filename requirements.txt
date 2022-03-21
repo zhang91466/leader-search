@@ -9,3 +9,4 @@ celery == 5.2.1
 flower == 1.0.0
 Redis == 4.0.2
 simplejson == 3.17.6
+sql-metadata == 2.4.0

@@ -157,10 +157,11 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
         elif table_name is not None:
             logger.debug("查询链接id(%d)下的表信息:%s" % (connection_id, table_name))
 
-            if "|" in table_name:
-                table_name_list = table_name.split("|")
-            else:
-                table_name_list = [table_name]
+            if isinstance(table_name, str):
+                if "|" in table_name:
+                    table_name_list = table_name.split("|")
+                else:
+                    table_name_list = [table_name]
 
             table_name_list = [str(x).lower() for x in table_name_list]
 
