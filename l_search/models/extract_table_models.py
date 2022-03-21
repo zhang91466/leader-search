@@ -114,7 +114,7 @@ class TableOperate:
         if len(create_table_column_info) > 0:
             create_table_sql = create_stat % {"table_name": table_name} + create_table_column_info.strip()[
                                                                           :-1] + close_stat
-            logger.info("table %s start sql %s" % (table_name, create_table_sql))
+            logger.info("table %s start sql: %s" % (table_name, create_table_sql))
             db.session.execute(create_table_sql)
 
             table_info.is_entity = True
@@ -177,7 +177,7 @@ class TableOperate:
         table_name = cls.get_real_table_name(table_name=table_info.table_name, is_stag=is_stag)
         logger.info("table %s start truncate" % table_name)
         truncate_stat = """truncate table %s""" % table_name
-        logger.info("table %s truncate sql %s" % (table_name, truncate_stat))
+        logger.info("table %s truncate sql: %s" % (table_name, truncate_stat))
         db.session.execute(truncate_stat)
 
         cls.db_commit(is_commit=is_commit)
@@ -192,7 +192,7 @@ class TableOperate:
         table_name = cls.get_real_table_name(table_name=table_info.table_name, is_stag=is_stag)
         logger.info("table %s start drop" % table_name)
         drop_stat = "drop table if exists %s" % table_name
-        logger.info("table %s drop sql %s" % (table_name, drop_stat))
+        logger.info("table %s drop sql: %s" % (table_name, drop_stat))
         db.session.execute(drop_stat)
         if is_stag is False:
             models.TableDetail.update_entity(table_info=table_info,
@@ -236,7 +236,7 @@ class TableOperate:
              "source_columns": source_table_columns_str})
         execute_result = db.session.execute(insert_stat)
 
-        logger.info("table %s start insert %s" % (target_table_name, insert_stat))
+        logger.info("table %s insert sql: %s" % (target_table_name, insert_stat))
 
         cls.db_commit(is_commit=is_commit)
         return execute_result.rowcount
@@ -295,10 +295,10 @@ class TableOperate:
         return [dict(row) for row in execute_data]
 
     @classmethod
-    def get_max_update_ts(cls, table_name, update_ts_col):
+    def get_max_update_ts(cls, table_name, update_ts_col, is_stag=True):
         max_stmt = "select max(%(update_ts_col)s) as max_update_ts from %(table_name)s" % {
             "update_ts_col": update_ts_col,
-            "table_name": cls.get_real_table_name(table_name=table_name, is_stag=True)}
+            "table_name": cls.get_real_table_name(table_name=table_name, is_stag=is_stag)}
 
         execute_data = db.session.execute(max_stmt).first()
 

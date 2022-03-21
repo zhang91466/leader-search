@@ -10,11 +10,7 @@ from .search import (api_search,
                      QueryIndex,
                      GroupIndex)
 from .mirror_data import (api_mirror,
-                          ExtractToFullTextIndexTable,
-                          ExtractToEntityInit,
-                          ExtractToEntityUpsert,
-                          ExtractToEntityDataGet,
-                          ExtractToEntityDrop
+                          ExtractAndLoad
                           )
 from .data_meta import (api_meta,
                         ConnectionInfo,
@@ -29,7 +25,7 @@ api = Api(title=__title__,
           version=__version__, )
 
 api.add_namespace(api_search, path="/search")
-api.add_namespace(api_mirror, path="/mirror")
+api.add_namespace(api_mirror, path="/entity")
 api.add_namespace(api_meta, path="/meta")
 api.add_namespace(api_task, path="/task")
 
@@ -47,25 +43,9 @@ api_search.add_resource(GroupIndex,
                         "/preview/<domain>/<db_object_type>/<db_name>",
                         endpoint="group_index")
 
-api_mirror.add_resource(ExtractToFullTextIndexTable,
-                        "/data_to_full_index/<domain>/<db_object_type>/<db_name>/<table_name>",
-                        endpoint="extract_to_full_text_index_table")
-
-api_mirror.add_resource(ExtractToEntityInit,
-                        "/data_to_table/<domain>/<db_object_type>/<db_name>/<table_name>/init",
-                        endpoint="extract_to_entity_init")
-
-api_mirror.add_resource(ExtractToEntityUpsert,
-                        "/data_to_table/<domain>/<db_object_type>/<db_name>/<table_name>/upsert",
-                        endpoint="extract_to_entity_upsert")
-
-api_mirror.add_resource(ExtractToEntityDataGet,
-                        "/data_to_table/<domain>/<db_object_type>/<db_name>/<table_name>/get",
-                        endpoint="extract_to_entity_get")
-
-api_mirror.add_resource(ExtractToEntityDrop,
-                        "/data_to_table/<domain>/<db_object_type>/<db_name>/<table_name>",
-                        endpoint="extract_to_entity_drop")
+api_mirror.add_resource(ExtractAndLoad,
+                        "/etl/<int:connection_id>/<table_info_id>",
+                        endpoint="extract_and_load")
 
 api_meta.add_resource(ConnectionInfo,
                       "/connections",

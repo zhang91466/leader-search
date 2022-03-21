@@ -7,8 +7,10 @@
 from l_search.models.extract_table_models import TableOperate
 from l_search.query_runner import get_query_runner
 from l_search import models
+from l_search.models.base import db
 from l_search import settings
 
+from werkzeug.exceptions import BadRequest
 from datetime import datetime
 
 
@@ -24,9 +26,9 @@ class DataExtractLoad:
         else:
             TableOperate.create_table(table_info=table_info)
 
-    def put_in_storage(self):
+    def put_in_storage(self, increment):
         """
-
+        需强制设置主键id,要不然无法做时态数据存储
         :return:
         """
 
@@ -66,11 +68,29 @@ class DataExtractLoad:
                                         is_commit=False
                                         )
             # 插入新数据
-            TableOperate.insert_table_to_table(
-                target_table_name=TableOperate.get_real_table_name(table_name=self.table_info.table_name, is_stag=False),
+            insert_row_count = TableOperate.insert_table_to_table(
+                target_table_name=TableOperate.get_real_table_name(table_name=self.table_info.table_name,
+                                                                   is_stag=False),
                 source_table_name=TableOperate.get_real_table_name(table_name=self.table_info.table_name, is_stag=True),
                 target_table_columns_str=target_col_str[:-1],
-                source_table_columns_str=source_col_str[:-1])
+                source_table_columns_str=source_col_str[:-1],
+                is_commit=False)
+
+            if self.table_info.table_extract_col is not None:
+                # 需求拿到最新的时间 然后更新到表中
+                max_update_ts_in_stag = TableOperate.get_max_update_ts(table_name=self.table_info.table_name,
+                                                                       update_ts_col=str(
+                                                                           self.table_info.table_extract_col).lower())
+
+                self.table_info.latest_extract_date = max_update_ts_in_stag
+
+                db.session.commit()
+                return insert_row_count
+            elif increment is False:
+                db.session.commit()
+                return insert_row_count
+            elif increment is True and self.table_info.table_extract_col is None:
+                raise BadRequest("Increment etl need update timestamp column, otherwise can't increment extract data.")
 
     def run(self, increment=True):
         """
@@ -108,11 +128,8 @@ class DataExtractLoad:
                                         table_info=self.table_info)
 
         query_runner.set_connection()
-        if query_runner.extract(increment=increment):
-            self.put_in_storage()
-
-        TableOperate.get_max_update_ts(table_name=self.table_info.table_name,
-                                       update_ts_col=self.table_info.latest_extract_date)
+        query_runner.extract(increment=increment)
+        return self.put_in_storage(increment=increment)
 
     def set_schedule(self):
         pass

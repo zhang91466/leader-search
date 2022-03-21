@@ -14,7 +14,7 @@ from l_search import settings
 class TestDataExtract(BaseTestCase):
 
     def insert_table_to_table(self):
-        table_info = self.table_init()
+        table_info = self.table_init(geo_name="geometry")
         table_columns, df_row_count = self.factory.insert_data_to_stag(table_info=table_info)
         table_columns_str = ",".join(table_columns)
 
@@ -52,7 +52,7 @@ class TestDataExtract(BaseTestCase):
 
 
     def test_3_insert(self):
-        table_info = self.table_init()
+        table_info = self.table_init(geo_name="geometry")
         table_data_df = self.factory.get_pickle_data(table_info=table_info)
         table_data_df = table_data_df.set_crs(crs=settings.GEO_CRS_CODE, allow_override=True)
         table_data_df.to_postgis(

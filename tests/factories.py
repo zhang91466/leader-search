@@ -61,6 +61,12 @@ db_table_info_factory = ModelFactory(
     table_name="L_FLOWPIPE"
 )
 
+db_table_info_increment_factory = ModelFactory(
+    model=models.TableInfo,
+    table_name="L_FLOWPIPE",
+    table_extract_col="UPDATETIME"
+)
+
 db_table_detail_dict = [
     {"column_name": "OBJECTID", "column_type": "integer", "column_type_length": "", "column_position": 1,
      "is_extract": True, "is_primary": True},
@@ -168,13 +174,9 @@ db_table_detail_dict = [
      "is_extract": True, "is_primary": False},
     {"column_name": "ENDID", "column_type": "nvarchar", "column_type_length": "50", "column_position": 53,
      "is_extract": True, "is_primary": False},
-    {"column_name": "SHAPE", "column_type": "geometry", "column_type_length": "", "column_position": 54,
-     "is_extract": True, "is_primary": False},
     {"column_name": "period", "column_type": "tsrange", "column_type_length": "", "column_position": 55,
      "is_extract": False, "is_primary": False, "is_system_col": True}]
 
-# {"column_name": "geometry", "column_type": "geometry", "column_type_length": "", "column_position": 54,
-#  "is_extract": True, "is_primary": False},
 
 class Factory:
 
@@ -192,9 +194,12 @@ class Factory:
             result_data = create_data
         return result_data
 
-    def create_table_info(self):
+    def create_table_info(self, increment_table=False):
         create_connection = mssql_connection_factory.create()
-        table_info_data = db_table_info_factory
+        if increment_table is True:
+            table_info_data = db_table_info_increment_factory
+        else:
+            table_info_data = db_table_info_factory
         table_info_data.kwargs["connection_id"] = create_connection.id
         create_table_info = table_info_data.create()
 
@@ -207,12 +212,21 @@ class Factory:
                        }
         return result_data
 
-    def create_table_detail(self, column_info_list=None):
+    def create_table_detail(self, column_info_list=None, geo_name="shape", increment_table=False):
 
         if column_info_list is None:
             column_info_list = db_table_detail_dict
 
-        create_table_info = self.create_table_info()
+            if geo_name == "shape":
+                column_info_list.append(
+                    {"column_name": "SHAPE", "column_type": "geometry", "column_type_length": "", "column_position": 54,
+                     "is_extract": True, "is_primary": False})
+            elif geo_name == "geometry":
+                column_info_list.append({"column_name": "geometry", "column_type": "geometry", "column_type_length": "",
+                                         "column_position": 54,
+                                         "is_extract": True, "is_primary": False})
+
+        create_table_info = self.create_table_info(increment_table=increment_table)
 
         result = []
 

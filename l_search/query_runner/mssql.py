@@ -10,6 +10,7 @@ from l_search.query_runner import register
 import geopandas as gpd
 import pandas as pd
 from shapely.wkt import loads
+from werkzeug.exceptions import BadRequest
 from l_search.utils.logger import Logger
 
 logger = Logger()
@@ -66,10 +67,10 @@ class Mssql(BasicQueryRunner):
                     partial_df.to_sql(**to_db_para)
 
             logger.debug("%s extract end" % self.table_info.table_name)
-            return True
         except Exception as e:
-            logger.error("%s extract failed. Error Info: %s" % (self.table_info.table_name, e))
-            return False
+            error_message = "%s extract failed. Error Info: %s" % (self.table_info.table_name, e)
+            logger.error(error_message)
+            raise BadRequest(error_message)
 
 
 register(Mssql)

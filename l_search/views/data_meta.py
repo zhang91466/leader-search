@@ -9,7 +9,7 @@ from l_search.handlers.meta_operation import Meta
 from l_search.tasks import sync_table_meta
 from l_search import models
 
-api_meta = Namespace('data_meta', description='Source data metabase')
+api_meta = Namespace("data_meta", description="Source data metabase")
 
 connection_info_schema = {
     "id": fields.Integer(description="数据库连接ID,修改连接信息时使用", required=False),

@@ -92,7 +92,7 @@ class BasicQueryRunner:
             else:
                 col_str += "%s," % column_name
 
-        select_stmt = "select %(col_str)s from %(table_name)s" % {"col_str": col_str[:-1],
+        select_stmt = "select top 100 %(col_str)s from %(table_name)s" % {"col_str": col_str[:-1],
                                                                   "table_name": self.table_name()}
 
         return select_stmt, geo_col
