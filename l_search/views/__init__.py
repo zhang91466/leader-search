@@ -6,9 +6,6 @@
 """
 from flask_restx import Api
 from l_search import __title__, __version__
-from .search import (api_search,
-                     QueryIndex,
-                     GroupIndex)
 from .mirror_data import (api_mirror,
                           ExtractAndLoad
                           )
@@ -24,24 +21,12 @@ from .tasks_info import (api_task,
 api = Api(title=__title__,
           version=__version__, )
 
-api.add_namespace(api_search, path="/search")
 api.add_namespace(api_mirror, path="/entity")
 api.add_namespace(api_meta, path="/meta")
 api.add_namespace(api_task, path="/task")
 
 api_task.add_resource(TaskStatus, "/<task_id>", endpoint="task_status")
 
-api_search.add_resource(QueryIndex,
-                        "/<domain>",
-                        "/<domain>/<db_object_type>",
-                        "/<domain>/<db_object_type>/<db_name>",
-                        endpoint="query_index")
-
-api_search.add_resource(GroupIndex,
-                        "/preview/<domain>",
-                        "/preview/<domain>/<db_object_type>",
-                        "/preview/<domain>/<db_object_type>/<db_name>",
-                        endpoint="group_index")
 
 api_mirror.add_resource(ExtractAndLoad,
                         "/etl/<int:connection_id>/<table_info_id>",
