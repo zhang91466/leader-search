@@ -62,23 +62,24 @@ class DataExtractLoad:
 
         if primary_column_name:
             # 通过primary id 更新 tsrange 把当前数据变为历史数据
-            TableOperate.update_tsrange(table_name=self.table_info.table_name,
+            TableOperate.update_tsrange(table_info=self.table_info,
                                         primary_col_name=primary_column_name,
                                         upper_datetime=now,
                                         is_commit=False
                                         )
             # 插入新数据
             insert_row_count = TableOperate.insert_table_to_table(
-                target_table_name=TableOperate.get_real_table_name(table_name=self.table_info.table_name,
+                target_table_name=TableOperate.get_real_table_name(table_name=self.table_info.entity_table_name(),
                                                                    is_stag=False),
-                source_table_name=TableOperate.get_real_table_name(table_name=self.table_info.table_name, is_stag=True),
+                source_table_name=TableOperate.get_real_table_name(table_name=self.table_info.entity_table_name(),
+                                                                   is_stag=True),
                 target_table_columns_str=target_col_str[:-1],
                 source_table_columns_str=source_col_str[:-1],
                 is_commit=False)
 
             if self.table_info.table_extract_col is not None:
                 # 需求拿到最新的时间 然后更新到表中
-                max_update_ts_in_stag = TableOperate.get_max_update_ts(table_name=self.table_info.table_name,
+                max_update_ts_in_stag = TableOperate.get_max_update_ts(table_info=self.table_info,
                                                                        update_ts_col=str(
                                                                            self.table_info.table_extract_col).lower())
 

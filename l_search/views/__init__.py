@@ -7,7 +7,8 @@
 from flask_restx import Api
 from l_search import __title__, __version__
 from .mirror_data import (api_mirror,
-                          ExtractAndLoad
+                          ExtractAndLoad,
+                          ExtractDataSelect
                           )
 from .data_meta import (api_meta,
                         ConnectionInfo,
@@ -27,10 +28,13 @@ api.add_namespace(api_task, path="/task")
 
 api_task.add_resource(TaskStatus, "/<task_id>", endpoint="task_status")
 
-
 api_mirror.add_resource(ExtractAndLoad,
                         "/etl/<int:connection_id>/<table_info_id>",
                         endpoint="extract_and_load")
+
+api_mirror.add_resource(ExtractDataSelect,
+                        "/execute_sql",
+                        endpoint="extract_data_select")
 
 api_meta.add_resource(ConnectionInfo,
                       "/connections",

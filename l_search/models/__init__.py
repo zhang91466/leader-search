@@ -113,6 +113,9 @@ def table_info_primary_id_value(context):
         str(context.get_current_parameters()["connection_id"]) + context.get_current_parameters()["table_name"]).encode(
         'utf-8')).hexdigest()
 
+def table_info_table_name_alias(context):
+    return context.get_current_parameters()["table_name"]
+
 
 class TableInfo(db.Model, InsertObject, TimestampMixin):
     __tablename__ = "table_info"
@@ -121,6 +124,8 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
     connection_id = Column(db.Integer, db.ForeignKey("db_connect_info.id"))
     connection = db.relationship(DBConnect, backref="table_info_db_connect")
     table_name = Column(db.String(500))
+    table_name_alias = Column(db.String(500), default=table_info_table_name_alias)
+    need_extract = Column(db.Boolean, default=True)
     is_entity = Column(db.Boolean, default=False)
     table_extract_col = Column(db.String(150), nullable=True)
     latest_extract_date = Column(db.DateTime(), nullable=True)
@@ -128,12 +133,16 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
     __table_args__ = (
         db.Index("table_info_connection_id_table_name_index", "connection_id", "table_name", unique=True),)
 
+    def entity_table_name(self):
+        return "c%d__%s" % (self.connection_id, self.table_name_alias)
+
     @classmethod
     def get_tables(cls,
                    connection_id=None,
                    connection_info=None,
                    table_id=None,
                    table_name=None,
+                   table_name_alias=None,
                    is_entity=None):
         """
         元数据表信息提取sql生成
@@ -143,6 +152,17 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
         :param table_name: 筛选表 单个或多个(a|b|c)
         :return:sql query
         """
+        def explain_table_name(import_table_name):
+            if isinstance(import_table_name, str):
+                if "|" in import_table_name:
+                    table_name_list = import_table_name.split("|")
+                else:
+                    table_name_list = [import_table_name]
+            else:
+                table_name_list = import_table_name
+
+            table_name_list = [str(x).lower() for x in table_name_list]
+            return table_name_list
 
         get_tables_query = cls.query
 
@@ -155,18 +175,11 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
         if table_id is not None:
             get_tables_query = get_tables_query.filter(cls.id == table_id)
         elif table_name is not None:
-            logger.debug("查询链接id(%d)下的表信息:%s" % (connection_id, table_name))
-
-            if isinstance(table_name, str):
-                if "|" in table_name:
-                    table_name_list = table_name.split("|")
-                else:
-                    table_name_list = [table_name]
-
-            table_name_list = [str(x).lower() for x in table_name_list]
-
+            table_name_list = explain_table_name(import_table_name=table_name)
             get_tables_query = get_tables_query.filter(func.lower(cls.table_name).in_(table_name_list))
-
+        elif table_name_alias is not None:
+            table_name_list = explain_table_name(import_table_name=table_name_alias)
+            get_tables_query = get_tables_query.filter(func.lower(cls.table_name_alias).in_(table_name_list))
         else:
             if connection_id is not None:
                 logger.debug("查询链接id(%d)下的所有表" % (connection_id))

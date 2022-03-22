@@ -65,7 +65,7 @@ class TableOperate:
         :return: table_name
         """
 
-        table_name = cls.get_real_table_name(table_name=table_info.table_name, is_stag=is_stag)
+        table_name = cls.get_real_table_name(table_name=table_info.entity_table_name(), is_stag=is_stag)
         logger.info("table %s start create" % table_name)
 
         table_detail = models.TableDetail.get_table_detail(table_info=table_info,
@@ -131,7 +131,7 @@ class TableOperate:
 
     @classmethod
     def alter_table(cls, table_info):
-        logger.info("table %s start alter" % table_info.table_name)
+        logger.info("table %s start alter" % table_info.entity_table_name())
 
         check_new_columns = models.TableDetail.get_table_detail(table_info=table_info,
                                                                 is_entity=False,
@@ -146,8 +146,8 @@ class TableOperate:
             # 删除并重建ods表
             # 迁移数据
             # 完成表更新
-            real_table_name = cls.get_real_table_name(table_name=table_info.table_name, is_stag=False)
-            stag_table_name = cls.get_real_table_name(table_name=table_info.table_name, is_stag=True)
+            real_table_name = cls.get_real_table_name(table_name=table_info.entity_table_name(), is_stag=False)
+            stag_table_name = cls.get_real_table_name(table_name=table_info.entity_table_name(), is_stag=True)
             get_exists_column_name = models.TableDetail.get_table_detail(table_info=table_info,
                                                                          is_entity=True)
 
@@ -177,7 +177,7 @@ class TableOperate:
         :param table_info: object TableInfo query result
         :return:
         """
-        table_name = cls.get_real_table_name(table_name=table_info.table_name, is_stag=is_stag)
+        table_name = cls.get_real_table_name(table_name=table_info.entity_table_name(), is_stag=is_stag)
         logger.info("table %s start truncate" % table_name)
         truncate_stat = """truncate table %s""" % table_name
         logger.info("table %s truncate sql: %s" % (table_name, truncate_stat))
@@ -192,7 +192,7 @@ class TableOperate:
         :param table_info: object TableInfo query result
         :return:
         """
-        table_name = cls.get_real_table_name(table_name=table_info.table_name, is_stag=is_stag)
+        table_name = cls.get_real_table_name(table_name=table_info.entity_table_name(), is_stag=is_stag)
         logger.info("table %s start drop" % table_name)
         drop_stat = "drop table if exists %s" % table_name
         logger.info("table %s drop sql: %s" % (table_name, drop_stat))
@@ -245,7 +245,8 @@ class TableOperate:
         return execute_result.rowcount
 
     @classmethod
-    def update_tsrange(cls, table_name, primary_col_name, upper_datetime, is_commit=True):
+    def update_tsrange(cls, table_info, primary_col_name, upper_datetime, is_commit=True):
+        table_name = table_info.entity_table_name()
         logger.info("table %s start update tsrange" % table_name)
         update_stmt = """
         UPDATE %(ods_table_name)s m set %(period)s = tsrange(lower(m.%(period)s)::timestamp, '%(upper_datetime)s'::timestamp, '[]') 
@@ -263,7 +264,8 @@ class TableOperate:
         cls.db_commit(is_commit=is_commit)
 
     @classmethod
-    def delete(cls, table_name, where_stat=None, is_commit=True):
+    def delete(cls, table_info, where_stat=None, is_stag=False, is_commit=True):
+        table_name = cls.get_real_table_name(table_name=table_info.entity_table_name(), is_stag=is_stag),
         logger.info("table %s start delete" % table_name)
 
         if where_stat:
@@ -278,8 +280,9 @@ class TableOperate:
         cls.db_commit(is_commit=is_commit)
 
     @classmethod
-    def select(cls, connection_id, sql):
-        logger.info("Start select by sql: %s" % sql)
+    def select(cls, sql, connection_id=None):
+
+        logger.info("Start select by sql")
 
         sql = str(sql).lower()
         black_key_words = ["insert", "update", "delete", "drop", "alter", "create", "truncate"]
@@ -298,29 +301,53 @@ class TableOperate:
 
         table_name_list = Parser(sql).tables
 
-        get_tables = models.TableInfo.get_tables(connection_id=connection_id,
-                                                 table_name=table_name_list)
+        get_tables = models.TableInfo.get_tables(table_name_alias=table_name_list)
+
+        if connection_id is not None and len(connection_id) > 0:
+            get_tables = [x for x in get_tables if x.connection_id in connection_id]
 
         if len(table_name_list) == len(get_tables):
-            pass
+            for i, table_info in enumerate(get_tables):
+
+                table_name = str(table_info.table_name_alias).lower()
+                table_alias = ""
+                # 为了避免用表命直接做别名，故需要在此处判断是否有表命后带点的情况 （select aa.b,aa.c from aa）
+                table_name_behind_with_point = "%s." % table_name
+                if table_name_behind_with_point in sql:
+                    table_alias = "T%d" % i
+                    sql = sql.replace(table_name_behind_with_point, "%s." % table_alias)
+
+                sql = sql.replace(table_name, "ods.%s %s" % (str(table_info.entity_table_name()).lower(), table_alias))
+
         else:
-            error_message = "Sql table not found: %s" % ",".join(list(set(table_name_list) - set(get_tables)))
+            table_meta = [x.table_name for x in get_tables]
+            error_message = "In the sql table(%s) of Connection %s are not found in metadata" % (
+                ",".join(list(set(table_name_list) - set(table_meta))),
+                str(connection_id))
             logger.warn(error_message)
             raise BadRequest(error_message)
 
-
-        select_stat = "select %(column_list)s from %(table_name)s %(where_stat)s" % {"column_list": column_list_str,
-                                                                                     "table_name": table_name,
-                                                                                     "where_stat": where_stat_str}
-        execute_data = db.session.execute(select_stat)
-        return [dict(row) for row in execute_data]
+        try:
+            logger.info("Execute select by sql: %s" % sql)
+            execute_data = db.session.execute(sql)
+            return [dict(row) for row in execute_data]
+        except Exception as e:
+            raise BadRequest("""Sql execute error. Execute sql:
+            %s
+            Error info:
+            %s
+            """ % (sql, e))
 
     @classmethod
-    def get_max_update_ts(cls, table_name, update_ts_col, is_stag=True):
+    def get_max_update_ts(cls, table_info, update_ts_col, is_stag=True):
+
+        table_name = cls.get_real_table_name(table_name=table_info.entity_table_name(), is_stag=is_stag)
+
         max_stmt = "select max(%(update_ts_col)s) as max_update_ts from %(table_name)s" % {
             "update_ts_col": update_ts_col,
-            "table_name": cls.get_real_table_name(table_name=table_name, is_stag=is_stag)}
+            "table_name": table_name}
 
+        logger.info("Get %s max update ts sql %s" % (table_name, max_stmt))
         execute_data = db.session.execute(max_stmt).first()
 
         return execute_data.max_update_ts

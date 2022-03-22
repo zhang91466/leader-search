@@ -45,6 +45,8 @@ def upgrade():
                     sa.Column('id', sa.String(length=50), nullable=False),
                     sa.Column('connection_id', sa.Integer(), nullable=False),
                     sa.Column('table_name', sa.String(length=500), nullable=False),
+                    sa.Column('table_name_alias', sa.String(length=500), nullable=False),
+                    sa.Column('need_extract', sa.Boolean(), nullable=True),
                     sa.Column('is_entity', sa.Boolean(), nullable=False),
                     sa.Column('table_extract_col', sa.String(length=150), nullable=True),
                     sa.Column('latest_extract_date', sa.DateTime(), nullable=True),
