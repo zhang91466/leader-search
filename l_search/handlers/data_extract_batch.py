@@ -117,20 +117,47 @@ class DataExtractLoad:
         获取更新时间的最大值 并记录
         :return:
         """
-        self.check_table(table_info=self.table_info)
+        if self.table_info.need_extract is True:
 
-        if increment is False:
-            TableOperate.truncate(table_info=self.table_info)
+            self.check_table(table_info=self.table_info)
 
-        TableOperate.drop_table(table_info=self.table_info, is_stag=True)
-        TableOperate.create_table(table_info=self.table_info, is_stag=True)
+            if increment is False:
+                TableOperate.truncate(table_info=self.table_info)
 
-        query_runner = get_query_runner(query_runner_type=self.table_info.connection.db_type,
-                                        table_info=self.table_info)
+            TableOperate.drop_table(table_info=self.table_info, is_stag=True)
+            TableOperate.create_table(table_info=self.table_info, is_stag=True)
 
-        query_runner.set_connection()
-        query_runner.extract(increment=increment)
-        return self.put_in_storage(increment=increment)
+            query_runner = get_query_runner(query_runner_type=self.table_info.connection.db_type,
+                                            table_info=self.table_info)
+
+            query_runner.set_connection()
+            query_runner.extract(increment=increment)
+            return self.put_in_storage(increment=increment)
+
+        else:
+            raise BadRequest("Table %s doesn't need extract" % self.table_info.table_name)
 
     def set_schedule(self):
         pass
+
+
+def extract_tables(is_full=False, table_info_list=None):
+    if table_info_list is None:
+        table_info_list = models.TableInfo.get_tables()
+
+    execute_result = {}
+
+    for table_info in table_info_list:
+
+        if is_full is True:
+            increment = False
+        else:
+            if table_info.latest_extract_date is not None:
+                increment = True
+            else:
+                increment = False
+
+        etl = DataExtractLoad(table_info=table_info)
+        execute_result[table_info.table_name] = etl.run(increment=increment)
+
+    return execute_result

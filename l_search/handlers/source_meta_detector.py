@@ -40,7 +40,7 @@ class MetaDetector:
     @staticmethod
     def is_extract_filter(column_data):
         result = False
-        if column_data.name in settings.EXTRACT_FILTER_COLUMN_NAME:
+        if str(column_data.name).lower() in settings.EXTRACT_FILTER_COLUMN_NAME:
             result = True
         return result
 
@@ -95,9 +95,6 @@ class MetaDetector:
 
             if self.is_extract_filter(c):
                 result["table_extract_col"] = c.name
-
-            if column_type in settings.SWITCH_DIFF_DB_COLUMN_TYPE_ACCORDING_PG["geometry"]:
-                result["has_geo_col"] = True
 
         result["columns"] = columns_info_list
 

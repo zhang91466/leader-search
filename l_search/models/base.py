@@ -75,11 +75,10 @@ class InsertObject:
 
         execute_result = db.session.execute(upsert_stmt)
 
-        db.session.commit()
-        # if is_commit:
-        #     db.session.commit()
-        # else:
-        #     db.session.flush()
+        if is_commit:
+            db.session.commit()
+        else:
+            db.session.flush()
 
         return_id_list = [row.id for row in execute_result]
 

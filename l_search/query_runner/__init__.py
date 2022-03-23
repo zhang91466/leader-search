@@ -91,7 +91,7 @@ class BasicQueryRunner:
                 col_str += "%(geo_col)s,"
             else:
                 col_str += "%s," % column_name
-
+        # Todo 记得删除limit
         select_stmt = "select top 100 %(col_str)s from %(table_name)s" % {"col_str": col_str[:-1],
                                                                   "table_name": self.table_name()}
 

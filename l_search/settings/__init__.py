@@ -35,7 +35,7 @@ SOURCE_DB_CONNECTION_URL = {DBObjectType("greenplum").value: {"connect_prefix": 
 
 STRING_COLUMN_TYPE = ["varchar", "string", "text", "char"]
 
-EXTRACT_FILTER_COLUMN_NAME = ["update_ts"]
+EXTRACT_FILTER_COLUMN_NAME = ["update_ts", "updatetime"]
 
 GEO_COLUMN_NAME = ["shape", "geom"]
 
@@ -48,7 +48,7 @@ GEO_CRS_CODE = 4326
 SWITCH_DIFF_DB_COLUMN_TYPE_ACCORDING_PG = {"varchar": ["varchar", "char", "nvarchar"],
                                            "integer": ["int", "smallint", "integer", "bigint"],
                                            "numeric": ["float", "numeric"],
-                                           "text": ["text", "xml"],
+                                           "text": ["text", "xml", "uniqueidentifier", "varbinary"],
                                            "timestamp": ["timestamp", "datetime", "datetime2"],
                                            "geometry": ["geometry"],
                                            "tsrange": ["tsrange"]
