@@ -5,14 +5,22 @@
 @file:mirror_data
 """
 from flask_restx import Namespace, Resource, fields, marshal
-from l_search.handlers.data_extract_batch import DataExtractLoad
+from l_search.handlers.data_extract_batch import extract_tables
 from l_search import models
 from l_search.models.extract_table_models import TableOperate
 from l_search.utils import json_dumps
 
 api_mirror = Namespace("extract_and_select", description="Extract data from source")
 
+extract_table_info_schema = {
+    "connection_id": fields.Integer(description="连接id"),
+    "table_list": fields.List(fields.String(description="需抽取的表名"))
+}
+
+extract_table_info_model = api_mirror.model("extract_table_info_schema", extract_table_info_schema)
+
 extract_para_schema = {
+    "tables": fields.List(fields.Nested(extract_table_info_model)),
     "extract_type": fields.String(description="抽取方式", enum=["i", "f"])
 }
 
@@ -22,22 +30,16 @@ extract_para_model = api_mirror.model("extract_para_schema", extract_para_schema
 class ExtractAndLoad(Resource):
 
     @api_mirror.expect(extract_para_model)
-    def post(self, connection_id, table_info_id):
+    def post(self):
         """
         异步 -- 对实体表进行数据更新
         :param connection_id:
         :param table_info_id:
         :return:
         """
-        table_info = models.TableInfo.get_tables(connection_id=connection_id,
-                                                 table_id=table_info_id)
         request_data = marshal(api_mirror.payload, extract_para_model)
-        etl = DataExtractLoad(table_info=table_info[0])
-
-        increment = False
-        if request_data["extract_type"] == "i":
-            increment = True
-        insert_success = etl.run(increment=increment)
+        insert_success = extract_tables(table_info_list=request_data["tables"],
+                                        is_full=request_data["extract_type"])
         return {"etl_success_row_count": insert_success}, 200
 
 

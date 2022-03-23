@@ -125,7 +125,6 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
     connection = db.relationship(DBConnect, backref="table_info_db_connect")
     table_name = Column(db.String(500))
     table_name_alias = Column(db.String(500), default=table_info_table_name_alias)
-    need_extract = Column(db.Boolean, default=True)
     is_entity = Column(db.Boolean, default=False)
     table_extract_col = Column(db.String(150), nullable=True)
     latest_extract_date = Column(db.DateTime(), nullable=True)

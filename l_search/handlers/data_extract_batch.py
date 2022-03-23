@@ -83,7 +83,11 @@ class DataExtractLoad:
                                                                        update_ts_col=str(
                                                                            self.table_info.table_extract_col).lower())
 
-                self.table_info.latest_extract_date = max_update_ts_in_stag
+                if max_update_ts_in_stag is not None:
+                    if self.table_info.latest_extract_date is None:
+                        self.table_info.latest_extract_date = max_update_ts_in_stag
+                    elif max_update_ts_in_stag > self.table_info.latest_extract_date:
+                        self.table_info.latest_extract_date = max_update_ts_in_stag
 
                 db.session.commit()
                 return insert_row_count
@@ -117,37 +121,39 @@ class DataExtractLoad:
         获取更新时间的最大值 并记录
         :return:
         """
-        if self.table_info.need_extract is True:
+        self.check_table(table_info=self.table_info)
 
-            self.check_table(table_info=self.table_info)
+        if increment is False:
+            TableOperate.truncate(table_info=self.table_info)
 
-            if increment is False:
-                TableOperate.truncate(table_info=self.table_info)
+        TableOperate.drop_table(table_info=self.table_info, is_stag=True)
+        TableOperate.create_table(table_info=self.table_info, is_stag=True)
 
-            TableOperate.drop_table(table_info=self.table_info, is_stag=True)
-            TableOperate.create_table(table_info=self.table_info, is_stag=True)
+        query_runner = get_query_runner(query_runner_type=self.table_info.connection.db_type,
+                                        table_info=self.table_info)
 
-            query_runner = get_query_runner(query_runner_type=self.table_info.connection.db_type,
-                                            table_info=self.table_info)
+        query_runner.set_connection()
+        query_runner.extract(increment=increment)
+        return self.put_in_storage(increment=increment)
 
-            query_runner.set_connection()
-            query_runner.extract(increment=increment)
-            return self.put_in_storage(increment=increment)
-
-        else:
-            raise BadRequest("Table %s doesn't need extract" % self.table_info.table_name)
 
     def set_schedule(self):
         pass
 
 
-def extract_tables(is_full=False, table_info_list=None):
+def extract_tables(table_info_list=None, is_full=True):
+    all_table = []
     if table_info_list is None:
-        table_info_list = models.TableInfo.get_tables()
+        all_table = models.TableInfo.get_tables()
+    else:
+        for t_list in table_info_list:
+            select_table = models.TableInfo.get_tables(connection_id=t_list["connection_id"],
+                                                       table_name=t_list["table_list"])
+            all_table.extend(select_table)
 
     execute_result = {}
 
-    for table_info in table_info_list:
+    for table_info in all_table:
 
         if is_full is True:
             increment = False

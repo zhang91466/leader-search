@@ -29,7 +29,7 @@ api.add_namespace(api_task, path="/task")
 api_task.add_resource(TaskStatus, "/<task_id>", endpoint="task_status")
 
 api_mirror.add_resource(ExtractAndLoad,
-                        "/etl/<int:connection_id>/<table_info_id>",
+                        "/extract_and_load",
                         endpoint="extract_and_load")
 
 api_mirror.add_resource(ExtractDataSelect,
