@@ -133,7 +133,7 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
         db.Index("table_info_connection_id_table_name_index", "connection_id", "table_name", unique=True),)
 
     def entity_table_name(self):
-        return "c%d__%s" % (self.connection_id, self.table_name_alias)
+        return "c%d__%s" % (self.connection_id, str(self.table_name_alias).lower())
 
     @classmethod
     def get_tables(cls,

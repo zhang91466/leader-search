@@ -53,7 +53,7 @@ class Mssql(BasicQueryRunner):
                 to_db_para = {"con": self.db_engine,
                               "if_exists": "append",
                               "schema": settings.ODS_STAG_SCHEMA_NAME,
-                              "name": str(table_name).lower(),
+                              "name": table_name,
                               "index": False}
 
                 partial_df = self.df_structure_arrangement(insert_data_df=partial_df)

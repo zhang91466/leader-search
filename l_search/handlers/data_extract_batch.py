@@ -9,15 +9,21 @@ from l_search.query_runner import get_query_runner
 from l_search import models
 from l_search.models.base import db
 from l_search import settings
+from l_search.utils.logger import Logger
 
 from werkzeug.exceptions import BadRequest
 from datetime import datetime
+
+logger = Logger()
 
 
 class DataExtractLoad:
 
     def __init__(self, table_info):
         self.table_info = table_info
+        self.query_runner = get_query_runner(query_runner_type=self.table_info.connection.db_type,
+                                             table_info=self.table_info)
+        self.query_runner.set_connection()
 
     def check_table(self, table_info):
 
@@ -61,12 +67,12 @@ class DataExtractLoad:
                 primary_column_name = column_name
 
         if primary_column_name:
-            # 通过primary id 更新 tsrange 把当前数据变为历史数据
-            TableOperate.update_tsrange(table_info=self.table_info,
-                                        primary_col_name=primary_column_name,
-                                        upper_datetime=now,
-                                        is_commit=False
-                                        )
+            if increment is True:
+                # 通过primary id 更新 tsrange 把当前数据变为历史数据
+                TableOperate.update_tsrange(table_info=self.table_info,
+                                            upper_datetime=now,
+                                            is_commit=False
+                                            )
             # 插入新数据
             insert_row_count = TableOperate.insert_table_to_table(
                 target_table_name=TableOperate.get_real_table_name(table_name=self.table_info.entity_table_name(),
@@ -96,6 +102,40 @@ class DataExtractLoad:
                 return insert_row_count
             elif increment is True and self.table_info.table_extract_col is None:
                 raise BadRequest("Increment etl need update timestamp column, otherwise can't increment extract data.")
+        else:
+            raise BadRequest("Table (%s) doesn't have primary col" % self.table_info.entity_table_name())
+
+    def check_row_count(self):
+        entity_table_count = TableOperate.row_count(table_info=self.table_info)
+        table_in_source_db_count = self.query_runner.row_count()
+        logger.info("Check table %s row count source(%d) local(%d)" % (self.table_info.entity_table_name,
+                                                                       table_in_source_db_count,
+                                                                       entity_table_count))
+        if entity_table_count == table_in_source_db_count:
+            return True
+        else:
+            return False
+
+    def for_delete_data_to_update_period(self):
+        """
+        通过数据行对比(源头与本地),本地的大于源头数据(现只要两个不对等)
+        要发现不对等
+            去源头抽取主键id
+            然后用主键id和现存的表进行对比
+            现存的表不存在该主键id则代表源头已经删除了
+        :return:
+        """
+        if self.check_row_count() is False:
+            self.query_runner.extract_primary_id()
+
+            now = datetime.now()
+            now = now.strftime("%Y-%m-%d, %H:%M:%S")
+
+            delete_row_count = TableOperate.update_tsrange_for_delete_data(table_info=self.table_info,
+                                                                           upper_datetime=now,
+                                                                           is_commit=False
+                                                                           )
+            return delete_row_count
 
     def run(self, increment=True):
         """
@@ -129,13 +169,12 @@ class DataExtractLoad:
         TableOperate.drop_table(table_info=self.table_info, is_stag=True)
         TableOperate.create_table(table_info=self.table_info, is_stag=True)
 
-        query_runner = get_query_runner(query_runner_type=self.table_info.connection.db_type,
-                                        table_info=self.table_info)
+        self.query_runner.extract(increment=increment)
+        put_row_count = self.put_in_storage(increment=increment)
 
-        query_runner.set_connection()
-        query_runner.extract(increment=increment)
-        return self.put_in_storage(increment=increment)
+        delete_row_count = self.for_delete_data_to_update_period()
 
+        return put_row_count, delete_row_count
 
     def set_schedule(self):
         pass
@@ -164,6 +203,9 @@ def extract_tables(table_info_list=None, is_full=True):
                 increment = False
 
         etl = DataExtractLoad(table_info=table_info)
-        execute_result[table_info.table_name] = etl.run(increment=increment)
+        input_cnt, delete_cnt = etl.run(increment=increment)
+
+        execute_result[table_info.table_name] = {"input_count": input_cnt,
+                                                 "delete_count": delete_cnt}
 
     return execute_result

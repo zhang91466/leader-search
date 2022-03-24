@@ -10,6 +10,9 @@ from l_search import models
 from l_search import settings
 from l_search.models.extract_table_models import DBSession
 
+from werkzeug.exceptions import BadRequest
+import pandas as pd
+
 logger = Logger()
 
 
@@ -19,6 +22,7 @@ def import_query_runners(query_runner_imports):
 
 
 query_runners = {}
+
 
 def register(query_runner_class):
     global query_runners
@@ -77,26 +81,6 @@ class BasicQueryRunner:
 
         return table_name
 
-    def select_stmt(self):
-
-        col_list = models.TableDetail.get_table_detail(table_info=self.table_info,
-                                                       is_extract=True)
-
-        col_str = ""
-        geo_col = None
-        for col in col_list:
-            column_name = col.column_name
-            if col.column_type == "geometry":
-                geo_col = column_name
-                col_str += "%(geo_col)s,"
-            else:
-                col_str += "%s," % column_name
-        # Todo 记得删除limit
-        select_stmt = "select top 100 %(col_str)s from %(table_name)s" % {"col_str": col_str[:-1],
-                                                                  "table_name": self.table_name()}
-
-        return select_stmt, geo_col
-
     def df_structure_arrangement(self, insert_data_df):
         table_schema = models.TableDetail.get_table_detail(table_info=self.table_info,
                                                            is_entity=True)
@@ -137,3 +121,47 @@ class BasicQueryRunner:
         insert_data_df.columns = insert_data_df.columns.str.lower()
 
         return insert_data_df
+
+    def select_stmt(self):
+
+        col_list = models.TableDetail.get_table_detail(table_info=self.table_info,
+                                                       is_extract=True)
+
+        col_str = ""
+        geo_col = None
+        for col in col_list:
+            column_name = col.column_name
+            if col.column_type == "geometry":
+                geo_col = column_name
+                col_str += "%(geo_col)s,"
+            else:
+                col_str += "%s," % column_name
+        # Todo 记得删除limit
+        select_stmt = "select top 100 %(col_str)s from %(table_name)s" % {"col_str": col_str[:-1],
+                                                                          "table_name": self.table_name()}
+
+        return select_stmt, geo_col
+
+    def row_count(self):
+        count_stmt = "select count(*) as row_cnt from %s" % self.table_name()
+        execute_result = self.source_db_engine.session.execute(count_stmt).first()
+        return execute_result.row_cnt
+
+    def extract_primary_id(self):
+        primary_column_name = models.TableDetail.get_table_detail(table_info=self.table_info,
+                                                                  table_primary=True)
+
+        select_stmt = "select %(primary_id)s from %(table_name)s" % {"primary_id": primary_column_name[0].column_name,
+                                                                     "table_name": self.table_name()}
+
+        try:
+            for count, partial_df in enumerate(pd.read_sql(select_stmt, self.source_db_engine, chunksize=self.chunk_size)):
+                partial_df.to_sql(con=self.db_engine,
+                                  if_exists="replace",
+                                  schema=settings.ODS_STAG_SCHEMA_NAME,
+                                  name=self.table_info.entity_table_name(),
+                                  index=False)
+        except Exception as e:
+            error_message = "%s extract failed with primary. Error Info: %s" % (self.table_info.table_name, e)
+            logger.error(error_message)
+            raise BadRequest(error_message)

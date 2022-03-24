@@ -245,23 +245,71 @@ class TableOperate:
         return execute_result.rowcount
 
     @classmethod
-    def update_tsrange(cls, table_info, primary_col_name, upper_datetime, is_commit=True):
+    def _primary_column_combine_for_sql(cls, table_info):
+        primary_row = models.TableDetail.get_table_detail(table_info=table_info,
+                                                          table_primary=True)
+
+        if len(primary_row) == 1:
+            return str(primary_row[0].column_name).lower()
+        else:
+            primary_name_list = []
+            for r in primary_row:
+                sql_cast_str = "%s::varchar" % str(r.column_name).lower()
+                primary_name_list.append(sql_cast_str)
+
+            return "concat(%s)" % "%(alias)s" + ",%(alias)s".join(primary_name_list)
+
+    @classmethod
+    def update_tsrange(cls, table_info, upper_datetime, is_commit=True):
         table_name = table_info.entity_table_name()
+        primary_col_name = cls._primary_column_combine_for_sql(table_info=table_info)
+
         logger.info("table %s start update tsrange" % table_name)
         update_stmt = """
         UPDATE %(ods_table_name)s m set %(period)s = tsrange(lower(m.%(period)s)::timestamp, '%(upper_datetime)s'::timestamp, '[]') 
         from %(stag_table_name)s stag
-        where m.%(primary_col_name)s = stag.%(primary_col_name)s""" % {
+        where %(m_primary_col_name)s = %(stag_primary_col_name)s""" % {
             "ods_table_name": cls.get_real_table_name(table_name=table_name, is_stag=False),
             "stag_table_name": cls.get_real_table_name(table_name=table_name, is_stag=True),
             "period": settings.PERIOD_COLUMN_NAME,
             "upper_datetime": upper_datetime,
-            "primary_col_name": primary_col_name}
+            "m_primary_col_name": primary_col_name % {"alias": "m."},
+            "stag_primary_col_name": primary_col_name % {"alias": "stag."}
+        }
 
         logger.info("table %s update tsrange sql %s" % (table_name, update_stmt))
         db.session.execute(update_stmt)
 
         cls.db_commit(is_commit=is_commit)
+
+    @classmethod
+    def update_tsrange_for_delete_data(cls, table_info, upper_datetime, is_commit=True):
+        table_name = table_info.entity_table_name()
+        primary_col_name = cls._primary_column_combine_for_sql(table_info=table_info)
+
+        logger.info("table %s start update tsrange for delete data " % table_name)
+        update_stmt = """
+            UPDATE %(ods_table_name)s set %(period)s = tsrange(lower(%(period)s)::timestamp, '%(upper_datetime)s'::timestamp, '[]') 
+            where %(primary_col_name)s in (
+                select %(m_primary_col_name)s 
+                from %(ods_table_name)s m
+                left join %(stag_table_name)s stag on %(m_primary_col_name)s = %(stag_primary_col_name)s
+                where %(stag_primary_col_name)s is null
+            )""" % {
+            "ods_table_name": cls.get_real_table_name(table_name=table_name, is_stag=False),
+            "stag_table_name": cls.get_real_table_name(table_name=table_name, is_stag=True),
+            "period": settings.PERIOD_COLUMN_NAME,
+            "upper_datetime": upper_datetime,
+            "primary_col_name": primary_col_name % {"alias": ""},
+            "m_primary_col_name": primary_col_name % {"alias": "m."},
+            "stag_primary_col_name": primary_col_name % {"alias": "stag."}
+        }
+
+        logger.info("table %s update tsrange for delete data sql %s" % (table_name, update_stmt))
+        execute_data = db.session.execute(update_stmt)
+
+        cls.db_commit(is_commit=is_commit)
+        return execute_data
 
     @classmethod
     def delete(cls, table_info, where_stat=None, is_stag=False, is_commit=True):
@@ -351,3 +399,13 @@ class TableOperate:
         execute_data = db.session.execute(max_stmt).first()
 
         return execute_data.max_update_ts
+
+    @classmethod
+    def row_count(cls, table_info):
+        table_name = cls.get_real_table_name(table_name=table_info.entity_table_name(), is_stag=False)
+
+        count_stmt = "select count(*) as row_cnt from %s" % table_name
+
+        logger.info("Get %s row count sql %s" % (table_name, count_stmt))
+        execute_data = db.session.execute(count_stmt).first()
+        return execute_data.row_cnt
