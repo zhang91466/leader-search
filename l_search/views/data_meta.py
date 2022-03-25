@@ -6,7 +6,7 @@
 """
 from flask_restx import Namespace, Resource, fields, marshal
 from l_search.handlers.meta_operation import Meta
-from l_search.tasks import sync_table_meta
+from l_search.tasks import celery_sync_table_meta
 from l_search import models
 
 api_meta = Namespace("data_meta", description="Source data metabase")
@@ -159,13 +159,13 @@ class SyncMeta(Resource):
         """
         request_data = marshal(api_meta.payload, sync_meta_model)
 
-        task = sync_table_meta.delay(domain=request_data["domain"],
-                                     db_object_type=models.DBObjectType[request_data["db_object_type"]].value,
-                                     db_name=request_data["db_name"],
-                                     db_schema=request_data["db_schema"],
-                                     table_list=request_data["table_list"],
-                                     table_name_prefix=request_data["table_name_prefix"]
-                                     )
+        task = celery_sync_table_meta.delay(domain=request_data["domain"],
+                                            db_object_type=models.DBObjectType[request_data["db_object_type"]].value,
+                                            db_name=request_data["db_name"],
+                                            db_schema=request_data["db_schema"],
+                                            table_list=request_data["table_list"],
+                                            table_name_prefix=request_data["table_name_prefix"]
+                                            )
         return {"task_id": task.id}, 200
 
         # task = sync_table_meta(domain=request_data["domain"],
