@@ -12,6 +12,7 @@ from l_search.models.extract_table_models import DBSession
 
 from werkzeug.exceptions import BadRequest
 import pandas as pd
+from sqlalchemy.orm import Session
 
 logger = Logger()
 
@@ -144,18 +145,22 @@ class BasicQueryRunner:
 
     def row_count(self):
         count_stmt = "select count(*) as row_cnt from %s" % self.table_name()
-        execute_result = self.source_db_engine.session.execute(count_stmt).first()
-        return execute_result.row_cnt
+        count_df = pd.read_sql(count_stmt, self.source_db_engine)
+        return count_df.iloc[-1]["row_cnt"]
 
     def extract_primary_id(self):
+        logger.info("%s start extract primary id" % self.table_name())
         primary_column_name = models.TableDetail.get_table_detail(table_info=self.table_info,
                                                                   table_primary=True)
 
-        select_stmt = "select %(primary_id)s from %(table_name)s" % {"primary_id": primary_column_name[0].column_name,
-                                                                     "table_name": self.table_name()}
+        select_stmt = "select %(primary_id)s from %(table_name)s" % {
+            "primary_id": ",".join([str(r.column_name).lower() for r in primary_column_name]),
+            "table_name": self.table_name()}
 
+        logger.info("%s start extract primary id sql: %s" % (self.table_name(), select_stmt))
         try:
-            for count, partial_df in enumerate(pd.read_sql(select_stmt, self.source_db_engine, chunksize=self.chunk_size)):
+            for count, partial_df in enumerate(
+                    pd.read_sql(select_stmt, self.source_db_engine, chunksize=self.chunk_size)):
                 partial_df.to_sql(con=self.db_engine,
                                   if_exists="replace",
                                   schema=settings.ODS_STAG_SCHEMA_NAME,

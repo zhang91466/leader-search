@@ -131,7 +131,6 @@ class TableOperate:
 
     @classmethod
     def alter_table(cls, table_info):
-        logger.info("table %s start alter" % table_info.entity_table_name())
 
         check_new_columns = models.TableDetail.get_table_detail(table_info=table_info,
                                                                 is_entity=False,
@@ -146,6 +145,10 @@ class TableOperate:
             # 删除并重建ods表
             # 迁移数据
             # 完成表更新
+            logger.info("table %s start alter. check new column %d or check disable columns %d" % (
+                table_info.entity_table_name(),
+                len(check_new_columns),
+                len(check_disable_columns)))
             real_table_name = cls.get_real_table_name(table_name=table_info.entity_table_name(), is_stag=False)
             stag_table_name = cls.get_real_table_name(table_name=table_info.entity_table_name(), is_stag=True)
             get_exists_column_name = models.TableDetail.get_table_detail(table_info=table_info,
@@ -250,14 +253,14 @@ class TableOperate:
                                                           table_primary=True)
 
         if len(primary_row) == 1:
-            return str(primary_row[0].column_name).lower()
+            return "%(alias)s" + str(primary_row[0].column_name).lower()
         else:
             primary_name_list = []
             for r in primary_row:
                 sql_cast_str = "%s::varchar" % str(r.column_name).lower()
                 primary_name_list.append(sql_cast_str)
 
-            return "concat(%s)" % "%(alias)s" + ",%(alias)s".join(primary_name_list)
+            return "concat(%s)" % ("%(alias)s" + ",%(alias)s".join(primary_name_list))
 
     @classmethod
     def update_tsrange(cls, table_info, upper_datetime, is_commit=True):
@@ -309,7 +312,7 @@ class TableOperate:
         execute_data = db.session.execute(update_stmt)
 
         cls.db_commit(is_commit=is_commit)
-        return execute_data
+        return execute_data.rowcount
 
     @classmethod
     def delete(cls, table_info, where_stat=None, is_stag=False, is_commit=True):

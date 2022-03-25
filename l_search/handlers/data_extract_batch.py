@@ -103,12 +103,13 @@ class DataExtractLoad:
             elif increment is True and self.table_info.table_extract_col is None:
                 raise BadRequest("Increment etl need update timestamp column, otherwise can't increment extract data.")
         else:
-            raise BadRequest("Table (%s) doesn't have primary col" % self.table_info.entity_table_name())
+            raise BadRequest("Table (%s) in %d doesn't have primary col" % (self.table_info.table_name,
+                                                                            self.table_info.connection_id))
 
     def check_row_count(self):
         entity_table_count = TableOperate.row_count(table_info=self.table_info)
         table_in_source_db_count = self.query_runner.row_count()
-        logger.info("Check table %s row count source(%d) local(%d)" % (self.table_info.entity_table_name,
+        logger.info("Check table %s row count source(%d) local(%d)" % (self.table_info.entity_table_name(),
                                                                        table_in_source_db_count,
                                                                        entity_table_count))
         if entity_table_count == table_in_source_db_count:
@@ -161,6 +162,7 @@ class DataExtractLoad:
         获取更新时间的最大值 并记录
         :return:
         """
+        logger.info("Table %s start with increment is %s" % (self.table_info.table_name, str(increment)))
         self.check_table(table_info=self.table_info)
 
         if increment is False:
@@ -172,7 +174,10 @@ class DataExtractLoad:
         self.query_runner.extract(increment=increment)
         put_row_count = self.put_in_storage(increment=increment)
 
-        delete_row_count = self.for_delete_data_to_update_period()
+        if increment is True:
+            delete_row_count = self.for_delete_data_to_update_period()
+        else:
+            delete_row_count = None
 
         return put_row_count, delete_row_count
 
@@ -202,8 +207,14 @@ def extract_tables(table_info_list=None, is_full=True):
             else:
                 increment = False
 
+        if str(table_info.table_name).lower() == "p_addpress_bak":
+            print("sss")
+
         etl = DataExtractLoad(table_info=table_info)
-        input_cnt, delete_cnt = etl.run(increment=increment)
+        try:
+            input_cnt, delete_cnt = etl.run(increment=increment)
+        except Exception as e:
+            pass
 
         execute_result[table_info.table_name] = {"input_count": input_cnt,
                                                  "delete_count": delete_cnt}

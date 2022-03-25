@@ -19,4 +19,4 @@ class TestDataExtractLoad(TestMetaDetector):
     def test_etl_all(self):
         self.meta_detector.detector_schema()
         extract_tables()
-        extract_tables()
+        extract_tables(is_full=False)
