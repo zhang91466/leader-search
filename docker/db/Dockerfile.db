@@ -1,5 +1,3 @@
-# "experimental" ;  only for testing!
-# multi-stage dockerfile;  minimal docker version >= 17.05
 FROM postgres:14-bullseye as builder
 
 LABEL maintainer="PostGIS Project - https://postgis.net"

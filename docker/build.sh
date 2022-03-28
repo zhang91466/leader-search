@@ -16,3 +16,5 @@ docker run \
     -v $data_folder:/var/lib/postgresql/data \
     -p 6688:5432 \
     -d postgresql-plus:v1
+
+docker-compose --compatibility up -d

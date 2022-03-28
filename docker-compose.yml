@@ -1,0 +1,30 @@
+version: '3'
+services:
+    db:
+      build:
+        context: ./docker/db
+        dockerfile: docker/db/Dockerfile.db
+      container_name: postgresql-plus:v1
+      environment:
+        - POSTGRES_PASSWORD=123456xxx
+        - PGDATA=/var/lib/postgresql/data/pgdata
+      ports:
+        - 6688:5432
+      volumes:
+        - ${main_folder}/data:/var/lib/postgresql/dat
+      deploy:
+        resources:
+          limits:
+            memory: 4G
+
+    redis:
+      image: redis:alpine
+      command: redis-server
+      ports:
+        - 6689:6379
+      deploy:
+        resources:
+          limits:
+            memory: 128M
+          reservations:
+            memory: 20M
