@@ -5,8 +5,13 @@
 @file:__init__.py
 """
 import os
-from l_search.models import DBObjectType
 
+# app basic
+PROXIES_COUNT = 1
+
+LOGGER_LEVEL = os.environ.get("LSEARCH_LOGGER_LEVEL", "INFO")
+
+# db connect info
 SQLALCHEMY_DATABASE_URI = os.environ.get(
     "LSEARCH_DB_CONNECT_URL", "postgresql+psycopg2://postgres:123456xxx@192.168.1.225:6688/l_search")
 
@@ -18,16 +23,30 @@ CELERY_RESULT_BACKEND = os.environ.get(
     "CELERY_RESULT_BACKEND", os.environ.get("REDIS_URL", "redis://192.168.1.224:6379/2")
 )
 
+# Query Runners
+default_query_runners = [
+    "l_search.query_runner.mssql"
+]
+
+# data extract
 ODS_SCHEMA_NAME = "ods"
 
 ODS_STAG_SCHEMA_NAME = "ods_stag"
 
-PROXIES_COUNT = 1
-
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-DATA_EXTRACT_CHUNK_SIZE = 100000
+DATA_EXTRACT_CHUNK_SIZE = os.environ.get("EXTRACT_CHUNK_SIZE", 100000)
 
+EXTRACT_FILTER_COLUMN_NAME = ["update_ts", "updatetime"]
+
+GEO_COLUMN_NAME = ["shape", "geom"]
+
+GEO_COLUMN_NAME_STAG = "geometry"
+
+PERIOD_COLUMN_NAME = "period"
+
+# metadata column type mapping
+from l_search.models import DBObjectType
 SOURCE_DB_CONNECTION_URL = {DBObjectType("greenplum").value: {"connect_prefix": "postgresql+psycopg2",
                                                               "remark": ""},
                             DBObjectType("postgresql").value: {"connect_prefix": "postgresql+psycopg2",
@@ -39,16 +58,6 @@ SOURCE_DB_CONNECTION_URL = {DBObjectType("greenplum").value: {"connect_prefix": 
                             DBObjectType("mssql").value: {"connect_prefix": "mssql+pymssql",
                                                           "remark": ""},
                             }
-
-STRING_COLUMN_TYPE = ["varchar", "string", "text", "char"]
-
-EXTRACT_FILTER_COLUMN_NAME = ["update_ts", "updatetime"]
-
-GEO_COLUMN_NAME = ["shape", "geom"]
-
-GEO_COLUMN_NAME_STAG = "geometry"
-
-PERIOD_COLUMN_NAME = "period"
 
 GEO_CRS_CODE = os.environ.get("GEO_CRS_CODE", 4326)
 
@@ -68,8 +77,3 @@ SWITCH_DIFF_DB_COLUMN_TYPE_ACCORDING_PD = {"varchar": ["object", ""],
                                            "timestamp": ["datetime64[ns]", "1900-01-01 00:00:00"],
                                            "geometry": ["geometry", ""]
                                            }
-
-# Query Runners
-default_query_runners = [
-    "l_search.query_runner.mssql"
-]

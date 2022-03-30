@@ -138,10 +138,7 @@ class TableDetail(Resource):
 
 
 sync_meta_schema = {
-    "domain": fields.String(description="系统域"),
-    "db_object_type": fields.String(description="数据库类型", enum=models.DBObjectType._member_names_),
-    "db_name": fields.String(description="数据库名称"),
-    "db_schema": fields.String(description="数据库名称 针对pg"),
+    "connection_id": fields.Integer(description="连接id"),
     "table_list": fields.List(fields.String(description="需要抽取表名称清单", default=None)),
     "table_name_prefix": fields.String(description="需要抽取表名称前缀", default=None)
 }
@@ -159,10 +156,7 @@ class SyncMeta(Resource):
         """
         request_data = marshal(api_meta.payload, sync_meta_model)
 
-        task = celery_sync_table_meta.delay(domain=request_data["domain"],
-                                            db_object_type=models.DBObjectType[request_data["db_object_type"]].value,
-                                            db_name=request_data["db_name"],
-                                            db_schema=request_data["db_schema"],
+        task = celery_sync_table_meta.delay(connection_id=request_data["connection_id"],
                                             table_list=request_data["table_list"],
                                             table_name_prefix=request_data["table_name_prefix"]
                                             )

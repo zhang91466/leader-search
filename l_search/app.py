@@ -6,7 +6,7 @@
 """
 from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
-from . import settings
+from l_search import settings
 from . import celeryapp
 
 

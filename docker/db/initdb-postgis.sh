@@ -10,6 +10,15 @@ export PGUSER="$POSTGRES_USER"
 CREATE DATABASE template_postgis IS_TEMPLATE true;
 EOSQL
 
+echo "Create l search db"
+# Create the 'l search' meta db
+"${psql[@]}" <<- 'EOSQL'
+CREATE DATABASE l_search;
+\connect l_search;
+CREATE SCHEMA IF NOT EXISTS ods;
+CREATE SCHEMA IF NOT EXISTS ods_stag;
+EOSQL
+
 # Load PostGIS into both template_database and $POSTGRES_DB
 for DB in template_postgis "$POSTGRES_DB"; do
 	echo "Loading PostGIS extensions into $DB"
@@ -20,3 +29,4 @@ for DB in template_postgis "$POSTGRES_DB"; do
 		CREATE EXTENSION IF NOT EXISTS postgis_tiger_geocoder;
 EOSQL
 done
+

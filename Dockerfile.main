@@ -42,7 +42,3 @@ COPY manage.py /app/
 COPY migrations /app/migrations
 COPY tests /app/tests
 
-RUN python3 manage.py db upgrade
-
-ENTRYPOINT ["python3", "manage.py", "run", "--host=0.0.0.0"]
-

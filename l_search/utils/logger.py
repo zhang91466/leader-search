@@ -4,33 +4,34 @@
 @author:zhang
 @file:logger.py
 """
-
+from l_search import settings
+from l_search.utils import trace
 
 import logging
 import logging.config
 import json
 import os as pyos
-from l_search.utils import trace
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
+
 NAME2LEVEL = {
-    'CRITICAL': logging.CRITICAL,
-    'ERROR': logging.ERROR,
-    'WARN': logging.WARNING,
-    'WARNING': logging.WARNING,
-    'INFO': logging.INFO,
-    'DEBUG': logging.DEBUG,
-    'NOTSET': logging.NOTSET,
+    "CRITICAL": logging.CRITICAL,
+    "ERROR": logging.ERROR,
+    "WARN": logging.WARNING,
+    "WARNING": logging.WARNING,
+    "INFO": logging.INFO,
+    "DEBUG": logging.DEBUG,
+    "NOTSET": logging.NOTSET,
 }
 
 LEVEL2NAME = {
-    logging.CRITICAL: 'CRITICAL',
-    logging.ERROR: 'ERROR',
-    logging.WARNING: 'WARNING',
-    logging.INFO: 'INFO',
-    logging.DEBUG: 'DEBUG',
-    logging.NOTSET: 'NOTSET',
+    logging.CRITICAL: "CRITICAL",
+    logging.ERROR: "ERROR",
+    logging.WARNING: "WARNING",
+    logging.INFO: "INFO",
+    logging.DEBUG: "DEBUG",
+    logging.NOTSET: "NOTSET",
 }
 
 
@@ -69,10 +70,10 @@ class Logger:
         # fileHandler.setLevel(logging.INFO)
         streamHandler = logging.StreamHandler()
         streamHandler.setFormatter(formatter)
-        streamHandler.setLevel(logging.DEBUG)
+        streamHandler.setLevel(NAME2LEVEL[settings.LOGGER_LEVEL])
         # streamHandler.setLevel(logging.WARN)
 
-        self.__logging.setLevel(logging.DEBUG)
+        self.__logging.setLevel(NAME2LEVEL[settings.LOGGER_LEVEL])
         # self.__logging.addHandler(fileHandler)
         self.__logging.addHandler(streamHandler)
 

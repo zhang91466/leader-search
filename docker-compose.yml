@@ -3,15 +3,15 @@ services:
     db:
       build:
         context: ./docker/db
-        dockerfile: docker/db/Dockerfile.db
-      container_name: postgresql-plus:v1
+        dockerfile: Dockerfile.db
+      container_name: postgresql-plus_v1
       environment:
         - POSTGRES_PASSWORD=123456xxx
         - PGDATA=/var/lib/postgresql/data/pgdata
       ports:
         - 6688:5432
       volumes:
-        - ${main_folder}/data:/var/lib/postgresql/dat
+        - /databases/gpdata/data1/docker/l_search_build/data:/var/lib/postgresql/data
       deploy:
         resources:
           limits:
@@ -28,3 +28,27 @@ services:
             memory: 128M
           reservations:
             memory: 20M
+
+    l_search:
+      build:
+        context: .
+        dockerfile: Dockerfile.main
+      depends_on:
+        - db
+        - redis
+      container_name: l_search_v1
+      environment:
+        - LSEARCH_DB_CONNECT_URL=postgresql+psycopg2://postgres:123456xxx@db/l_search
+        - CELERY_BROKER_URL=redis://redis/2
+        - CELERY_RESULT_BACKEND=redis://redis/2
+        - LSEARCH_LOGGER_LEVEL=DEBUG
+        - EXTRACT_CHUNK_SIZE=50000
+        - GEO_CRS_CODE=4326
+      ports:
+        - 6680:5000
+      working_dir: /app
+      command: bash -c "python3 manage.py db upgrade && python3 manage.py run --host=0.0.0.0"
+      deploy:
+        resources:
+          limits:
+            memory: 6G
