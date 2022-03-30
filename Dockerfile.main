@@ -1,0 +1,48 @@
+FROM --platform=linux/amd64 python:3.7-slim-buster
+
+WORKDIR /app
+RUN set -ex \
+    && mv /etc/apt/sources.list /etc/apt/sources.list.bak \
+    && echo "deb http://mirrors.aliyun.com/debian/ bullseye main non-free contrib" >> /etc/apt/sources.list \
+    && echo "deb-src http://mirrors.aliyun.com/debian/ bullseye main non-free contrib" >> /etc/apt/sources.list \
+    && echo "deb http://mirrors.aliyun.com/debian-security/ bullseye-security main" >> /etc/apt/sources.list \
+    && echo "deb-src http://mirrors.aliyun.com/debian-security/ bullseye-security main" >> /etc/apt/sources.list \
+    && echo "deb http://mirrors.aliyun.com/debian/ bullseye-updates main non-free contrib" >> /etc/apt/sources.list \
+    && echo "deb-src http://mirrors.aliyun.com/debian/ bullseye-updates main non-free contrib" >> /etc/apt/sources.list \
+    && echo "deb http://mirrors.aliyun.com/debian/ bullseye-backports main non-free contrib" >> /etc/apt/sources.list \
+    && echo "deb-src http://mirrors.aliyun.com/debian/ bullseye-backports main non-free contrib" >> /etc/apt/sources.list \
+    && apt-get update  \
+    && apt-get install -y \
+        curl \
+        unzip \
+        gnupg \
+        # Mysql client:
+        default-libmysqlclient-dev \
+        # Postgres client:
+        libpq-dev \
+        # ODBC support:
+        g++ \
+        libodbc1 \
+        # for SAML
+        xmlsec1 \
+    # MSSQL ODBC Driver:
+    && apt update \
+    && apt install -y unixodbc \
+    && curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
+    && curl https://packages.microsoft.com/config/debian/10/prod.list > /etc/apt/sources.list.d/mssql-release.list \
+    && apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y msodbcsql17 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt /app/
+RUN pip install -r requirements.txt -i https://pypi.doubanio.com/simple
+COPY l_search /app/l_search
+COPY manage.py /app/
+COPY migrations /app/migrations
+COPY tests /app/tests
+
+RUN python3 manage.py db upgrade
+
+ENTRYPOINT ["python3", "manage.py", "run", "--host=0.0.0.0"]
+
