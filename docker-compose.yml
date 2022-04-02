@@ -51,4 +51,47 @@ services:
       deploy:
         resources:
           limits:
-            memory: 6G
+            memory: 2G
+
+    celery_work:
+      build:
+        context: .
+        dockerfile: Dockerfile.main
+      depends_on:
+        - db
+        - redis
+      container_name: celery_work
+      environment:
+        - LSEARCH_DB_CONNECT_URL=postgresql+psycopg2://postgres:123456xxx@db/l_search
+        - CELERY_BROKER_URL=redis://redis/2
+        - CELERY_RESULT_BACKEND=redis://redis/2
+        - LSEARCH_LOGGER_LEVEL=DEBUG
+        - EXTRACT_CHUNK_SIZE=50000
+        - GEO_CRS_CODE=4326
+      working_dir: /app
+      command: bash -c "celery -A l_search.celeryapp.celery_worker.celery worker --concurrency=2 -E"
+      deploy:
+        resources:
+          limits:
+            memory: 2G
+
+    flower:
+      build:
+        context: .
+        dockerfile: Dockerfile.main
+      depends_on:
+        - db
+        - redis
+      container_name: flower
+      environment:
+        - CELERY_BROKER_URL=redis://redis/2
+        - CELERY_RESULT_BACKEND=redis://redis/2
+        - LSEARCH_LOGGER_LEVEL=DEBUG
+      working_dir: /app
+      command: bash -c "celery -A l_search.celeryapp.celery_worker.celery flower --port=7789"
+      ports:
+        - 6681:7789
+      deploy:
+        resources:
+          limits:
+            memory: 1G
