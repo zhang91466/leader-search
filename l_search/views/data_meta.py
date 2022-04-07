@@ -162,11 +162,8 @@ class SyncMeta(Resource):
                                             )
         return {"task_id": task.id}, 200
 
-        # task = sync_table_meta(domain=request_data["domain"],
-        #                        db_object_type=models.DBObjectType[request_data["db_object_type"]].value,
-        #                        db_name=request_data["db_name"],
-        #                        db_schema=request_data["db_schema"],
-        #                        table_list=request_data["table_list"],
-        #                        table_name_prefix=request_data["table_name_prefix"]
-        #                        )
+        # task = celery_sync_table_meta(connection_id=request_data["connection_id"],
+        #                               table_list=request_data["table_list"],
+        #                               table_name_prefix=request_data["table_name_prefix"]
+        #                               )
         # return task, 200

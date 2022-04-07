@@ -49,6 +49,8 @@ def upgrade():
                     sa.Column('is_entity', sa.Boolean(), nullable=False),
                     sa.Column('table_extract_col', sa.String(length=150), nullable=True),
                     sa.Column('latest_extract_date', sa.DateTime(), nullable=True),
+                    sa.Column('has_been_dropped', sa.Boolean(), nullable=False),
+                    sa.Column('dropped_time', sa.DateTime(), nullable=True),
                     sa.ForeignKeyConstraint(['connection_id'], ['db_connect_info.id'], ),
                     sa.PrimaryKeyConstraint('id')
                     )
@@ -66,6 +68,7 @@ def upgrade():
                     sa.Column('column_position', sa.Integer(), nullable=False),
                     sa.Column('is_extract', sa.Boolean(), nullable=False),
                     sa.Column('is_primary', sa.Boolean(), nullable=False),
+                    sa.Column('is_entity', sa.Boolean(), nullable=False),
                     sa.Column('is_system_col', sa.Boolean(), nullable=False),
                     sa.ForeignKeyConstraint(['table_info_id'], ['table_info.id'], ),
                     sa.PrimaryKeyConstraint('id')

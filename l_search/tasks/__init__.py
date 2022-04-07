@@ -22,9 +22,10 @@ def celery_sync_table_meta(connection_id, table_list=None, table_name_prefix=Non
 
 
 @celery.task()
-def celery_extract_data_from_source(table_info_list, is_full):
+def celery_extract_data_from_source(connection_info_list, table_id_list, is_full):
     from l_search.handlers.data_extract_batch import extract_tables
-    insert_success = extract_tables(table_info_list=table_info_list,
+    insert_success = extract_tables(connection_info_list=connection_info_list,
+                                    table_id_list=table_id_list,
                                     is_full=is_full)
     return {"etl_success_row_count": insert_success}
 

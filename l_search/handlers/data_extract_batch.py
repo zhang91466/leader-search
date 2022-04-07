@@ -27,10 +27,15 @@ class DataExtractLoad:
 
     def check_table(self, table_info):
 
+        if self.query_runner.check_source_table_exists() is False:
+            return False
+
         if table_info.is_entity:
             TableOperate.alter_table(table_info=table_info)
         else:
             TableOperate.create_table(table_info=table_info)
+
+        return True
 
     def put_in_storage(self, increment):
         """
@@ -54,7 +59,7 @@ class DataExtractLoad:
             target_append_column_name = column_name
             source_append_column_name = column_name
 
-            if col.column_type == "geometry":
+            if col.column_type in settings.GEO_COLUMN_TYPE:
                 source_append_column_name = settings.GEO_COLUMN_NAME_STAG
 
             if col.column_name == settings.PERIOD_COLUMN_NAME:
@@ -63,48 +68,41 @@ class DataExtractLoad:
             target_col_str += " %s," % target_append_column_name
             source_col_str += " %s," % source_append_column_name
 
-            if col.is_primary:
-                primary_column_name = column_name
+        if increment is True:
+            # 通过primary id 更新 tsrange 把当前数据变为历史数据
+            TableOperate.update_tsrange(table_info=self.table_info,
+                                        upper_datetime=now,
+                                        is_commit=False
+                                        )
+        # 插入新数据
+        insert_row_count = TableOperate.insert_table_to_table(
+            target_table_name=TableOperate.get_real_table_name(table_name=self.table_info.entity_table_name(),
+                                                               is_stag=False),
+            source_table_name=TableOperate.get_real_table_name(table_name=self.table_info.entity_table_name(),
+                                                               is_stag=True),
+            target_table_columns_str=target_col_str[:-1],
+            source_table_columns_str=source_col_str[:-1],
+            is_commit=False)
 
-        if primary_column_name:
-            if increment is True:
-                # 通过primary id 更新 tsrange 把当前数据变为历史数据
-                TableOperate.update_tsrange(table_info=self.table_info,
-                                            upper_datetime=now,
-                                            is_commit=False
-                                            )
-            # 插入新数据
-            insert_row_count = TableOperate.insert_table_to_table(
-                target_table_name=TableOperate.get_real_table_name(table_name=self.table_info.entity_table_name(),
-                                                                   is_stag=False),
-                source_table_name=TableOperate.get_real_table_name(table_name=self.table_info.entity_table_name(),
-                                                                   is_stag=True),
-                target_table_columns_str=target_col_str[:-1],
-                source_table_columns_str=source_col_str[:-1],
-                is_commit=False)
+        if self.table_info.table_extract_col is not None:
+            # 需求拿到最新的时间 然后更新到表中
+            max_update_ts_in_stag = TableOperate.get_max_update_ts(table_info=self.table_info,
+                                                                   update_ts_col=str(
+                                                                       self.table_info.table_extract_col).lower())
 
-            if self.table_info.table_extract_col is not None:
-                # 需求拿到最新的时间 然后更新到表中
-                max_update_ts_in_stag = TableOperate.get_max_update_ts(table_info=self.table_info,
-                                                                       update_ts_col=str(
-                                                                           self.table_info.table_extract_col).lower())
+            if max_update_ts_in_stag is not None:
+                if self.table_info.latest_extract_date is None:
+                    self.table_info.latest_extract_date = max_update_ts_in_stag
+                elif max_update_ts_in_stag > self.table_info.latest_extract_date:
+                    self.table_info.latest_extract_date = max_update_ts_in_stag
 
-                if max_update_ts_in_stag is not None:
-                    if self.table_info.latest_extract_date is None:
-                        self.table_info.latest_extract_date = max_update_ts_in_stag
-                    elif max_update_ts_in_stag > self.table_info.latest_extract_date:
-                        self.table_info.latest_extract_date = max_update_ts_in_stag
-
-                db.session.commit()
-                return insert_row_count
-            elif increment is False:
-                db.session.commit()
-                return insert_row_count
-            elif increment is True and self.table_info.table_extract_col is None:
-                raise BadRequest("Increment etl need update timestamp column, otherwise can't increment extract data.")
-        else:
-            raise BadRequest("Table (%s) in %d doesn't have primary col" % (self.table_info.table_name,
-                                                                            self.table_info.connection_id))
+            db.session.commit()
+            return insert_row_count
+        elif increment is False:
+            db.session.commit()
+            return insert_row_count
+        elif increment is True and self.table_info.table_extract_col is None:
+            raise BadRequest("Increment etl need update timestamp column, otherwise can't increment extract data.")
 
     def check_row_count(self):
         entity_table_count = TableOperate.row_count(table_info=self.table_info)
@@ -163,38 +161,42 @@ class DataExtractLoad:
         :return:
         """
         logger.info("Table %s start with increment is %s" % (self.table_info.table_name, str(increment)))
-        self.check_table(table_info=self.table_info)
+        if self.check_table(table_info=self.table_info):
 
-        if increment is False:
-            TableOperate.truncate(table_info=self.table_info)
+            if increment is False:
+                TableOperate.truncate(table_info=self.table_info)
 
-        TableOperate.drop_table(table_info=self.table_info, is_stag=True)
-        TableOperate.create_table(table_info=self.table_info, is_stag=True)
+            TableOperate.drop_table(table_info=self.table_info, is_stag=True)
+            TableOperate.create_table(table_info=self.table_info, is_stag=True)
 
-        self.query_runner.extract(increment=increment)
-        put_row_count = self.put_in_storage(increment=increment)
+            error_message = self.query_runner.extract(increment=increment)
 
-        if increment is True:
-            delete_row_count = self.for_delete_data_to_update_period()
+            if error_message is None:
+                put_row_count = self.put_in_storage(increment=increment)
+
+                if increment is True:
+                    delete_row_count = self.for_delete_data_to_update_period()
+                else:
+                    delete_row_count = None
+
+                return put_row_count, delete_row_count, None
+            else:
+                return 0, 0, error_message
         else:
-            delete_row_count = None
-
-        return put_row_count, delete_row_count
+            return 0, 0, "Table has been moved from source db"
 
     def set_schedule(self):
         pass
 
 
-def extract_tables(table_info_list=None, is_full=True):
-    all_table = []
-    if table_info_list is None:
-        all_table = models.TableInfo.get_tables()
-    else:
-        for t_list in table_info_list:
-            select_table = models.TableInfo.get_tables(connection_id=t_list["connection_id"],
-                                                       table_name=t_list["table_list"])
-            all_table.extend(select_table)
+def extract_tables(connection_info_list=None, table_id_list=None, is_full=True):
 
+    if connection_info_list is None and table_id_list is None:
+        all_table = models.TableInfo.get_tables(source_table_exists=True)
+    else:
+        all_table = models.TableInfo.get_tables(connection_id=connection_info_list,
+                                                table_id=table_id_list,
+                                                source_table_exists=True)
     execute_result = {}
 
     for table_info in all_table:
@@ -207,16 +209,12 @@ def extract_tables(table_info_list=None, is_full=True):
             else:
                 increment = False
 
-        if str(table_info.table_name).lower() == "p_addpress_bak":
-            print("sss")
-
         etl = DataExtractLoad(table_info=table_info)
-        try:
-            input_cnt, delete_cnt = etl.run(increment=increment)
-        except Exception as e:
-            pass
+
+        input_cnt, delete_cnt, error_message = etl.run(increment=increment)
 
         execute_result[table_info.table_name] = {"input_count": input_cnt,
-                                                 "delete_count": delete_cnt}
+                                                 "delete_count": delete_cnt,
+                                                 "error_info": error_message}
 
     return execute_result

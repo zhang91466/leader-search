@@ -83,6 +83,15 @@ class BasicQueryRunner:
         return table_name
 
     def df_structure_arrangement(self, insert_data_df):
+        """
+        when df column all value is nan, then column type is chaotic
+        so need change df column type consistent with created table in pg
+
+        step1: get table schema and change to pg schema
+        step2: set df schema same as pg schema
+        :param insert_data_df:
+        :return:
+        """
         table_schema = models.TableDetail.get_table_detail(table_info=self.table_info,
                                                            is_entity=True)
         table_schema_column_type = {}
@@ -132,7 +141,7 @@ class BasicQueryRunner:
         geo_col = None
         for col in col_list:
             column_name = col.column_name
-            if col.column_type == "geometry":
+            if col.column_type in settings.GEO_COLUMN_TYPE:
                 geo_col = column_name
                 col_str += "%(geo_col)s,"
             else:
@@ -170,3 +179,15 @@ class BasicQueryRunner:
             error_message = "%s extract failed with primary. Error Info: %s" % (self.table_info.table_name, e)
             logger.error(error_message)
             raise BadRequest(error_message)
+
+    def check_source_table_exists(self):
+        logger.info("Check table %s is exists in source db" % self.table_info.table_name)
+        check_stat = "select 1 from %s" % self.table_info.table_name
+
+        try:
+            pd.read_sql(check_stat, self.source_db_engine)
+            return True
+        except Exception as e:
+            models.TableInfo.delete_table_info(table_info=self.table_info)
+            logger.warn("Table %s has been moved from source db" % self.table_info.table_name)
+            return False

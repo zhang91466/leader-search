@@ -35,7 +35,7 @@ ODS_STAG_SCHEMA_NAME = "ods_stag"
 
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-DATA_EXTRACT_CHUNK_SIZE = os.environ.get("EXTRACT_CHUNK_SIZE", 100000)
+DATA_EXTRACT_CHUNK_SIZE = int(os.environ.get("EXTRACT_CHUNK_SIZE", 100000))
 
 EXTRACT_FILTER_COLUMN_NAME = ["update_ts", "updatetime"]
 
@@ -43,10 +43,13 @@ GEO_COLUMN_NAME = ["shape", "geom"]
 
 GEO_COLUMN_NAME_STAG = "geometry"
 
+GEO_COLUMN_TYPE = ("geometry", "geometryZ")
+
 PERIOD_COLUMN_NAME = "period"
 
 # metadata column type mapping
 from l_search.models import DBObjectType
+
 SOURCE_DB_CONNECTION_URL = {DBObjectType("greenplum").value: {"connect_prefix": "postgresql+psycopg2",
                                                               "remark": ""},
                             DBObjectType("postgresql").value: {"connect_prefix": "postgresql+psycopg2",
@@ -59,7 +62,7 @@ SOURCE_DB_CONNECTION_URL = {DBObjectType("greenplum").value: {"connect_prefix": 
                                                           "remark": ""},
                             }
 
-GEO_CRS_CODE = os.environ.get("GEO_CRS_CODE", 4326)
+GEO_CRS_CODE = int(os.environ.get("GEO_CRS_CODE", 4326))
 
 SWITCH_DIFF_DB_COLUMN_TYPE_ACCORDING_PG = {"varchar": ["varchar", "char", "nvarchar"],
                                            "integer": ["int", "smallint", "integer", "bigint"],
@@ -67,6 +70,7 @@ SWITCH_DIFF_DB_COLUMN_TYPE_ACCORDING_PG = {"varchar": ["varchar", "char", "nvarc
                                            "text": ["text", "xml", "uniqueidentifier", "varbinary"],
                                            "timestamp": ["timestamp", "datetime", "datetime2"],
                                            "geometry": ["geometry"],
+                                           "geometryZ": ["geometryZ"],
                                            "tsrange": ["tsrange"]
                                            }
 
@@ -75,5 +79,6 @@ SWITCH_DIFF_DB_COLUMN_TYPE_ACCORDING_PD = {"varchar": ["object", ""],
                                            "integer": ["int64", 0],
                                            "numeric": ["float64", 0],
                                            "timestamp": ["datetime64[ns]", "1900-01-01 00:00:00"],
-                                           "geometry": ["geometry", ""]
+                                           "geometry": ["geometry", ""],
+                                           "geometryZ": ["geometry", ""]
                                            }

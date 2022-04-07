@@ -11,3 +11,5 @@ Redis == 4.0.2
 simplejson == 3.17.6
 sql-metadata == 2.4.0
 geopandas == 0.10.2
+pymssql == 2.2.4
+geoalchemy2 == 0.10.2

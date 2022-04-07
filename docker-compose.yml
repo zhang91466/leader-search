@@ -43,7 +43,7 @@ services:
         - CELERY_RESULT_BACKEND=redis://redis/2
         - LSEARCH_LOGGER_LEVEL=DEBUG
         - EXTRACT_CHUNK_SIZE=50000
-        - GEO_CRS_CODE=4326
+        - GEO_CRS_CODE=4549
       ports:
         - 6680:5000
       working_dir: /app
@@ -58,8 +58,7 @@ services:
         context: .
         dockerfile: Dockerfile.main
       depends_on:
-        - db
-        - redis
+        - l_search
       container_name: celery_work
       environment:
         - LSEARCH_DB_CONNECT_URL=postgresql+psycopg2://postgres:123456xxx@db/l_search
@@ -67,7 +66,7 @@ services:
         - CELERY_RESULT_BACKEND=redis://redis/2
         - LSEARCH_LOGGER_LEVEL=DEBUG
         - EXTRACT_CHUNK_SIZE=50000
-        - GEO_CRS_CODE=4326
+        - GEO_CRS_CODE=4549
       working_dir: /app
       command: bash -c "celery -A l_search.celeryapp.celery_worker.celery worker --concurrency=2 -E"
       deploy:
@@ -80,10 +79,10 @@ services:
         context: .
         dockerfile: Dockerfile.main
       depends_on:
-        - db
-        - redis
+        - l_search
       container_name: flower
       environment:
+        - LSEARCH_DB_CONNECT_URL=postgresql+psycopg2://postgres:123456xxx@db/l_search
         - CELERY_BROKER_URL=redis://redis/2
         - CELERY_RESULT_BACKEND=redis://redis/2
         - LSEARCH_LOGGER_LEVEL=DEBUG

@@ -5,23 +5,14 @@
 @file:mirror_data
 """
 from flask_restx import Namespace, Resource, fields, marshal
-from l_search.handlers.data_extract_batch import extract_tables
-from l_search.models.extract_table_models import TableOperate
-from l_search.utils import json_dumps
 from l_search.tasks import (celery_extract_data_from_source,
                             celery_select_entity_table)
 
 api_mirror = Namespace("extract_and_select", description="Extract data from source")
 
-extract_table_info_schema = {
-    "connection_id": fields.Integer(description="连接id"),
-    "table_list": fields.List(fields.String(description="需抽取的表名"))
-}
-
-extract_table_info_model = api_mirror.model("extract_table_info_schema", extract_table_info_schema)
-
 extract_para_schema = {
-    "tables": fields.List(fields.Nested(extract_table_info_model)),
+    "connections": fields.List(fields.Integer(description="连接id")),
+    "tables": fields.List(fields.String(description="表id")),
     "extract_type": fields.String(description="抽取方式", enum=["i", "f"])
 }
 
@@ -39,13 +30,15 @@ class ExtractAndLoad(Resource):
         :return:
         """
         request_data = marshal(api_mirror.payload, extract_para_model)
-        task = celery_extract_data_from_source.delay(table_info_list=request_data["tables"],
-                                                     is_full=request_data["extract_type"])
-
-        # insert_success = extract_tables(table_info_list=request_data["tables"],
-        #                                 is_full=request_data["extract_type"])
-        # return {"etl_success_row_count": insert_success}, 200
+        task = celery_extract_data_from_source.delay(connection_info_list=request_data["connections"],
+                                                                 table_info_list=request_data["tables"],
+                                                                 is_full=request_data["extract_type"])
         return {"task_id": task.id}, 200
+
+        # insert_success = celery_extract_data_from_source(connection_info_list=request_data["connections"],
+        #                                                  table_id_list=request_data["tables"],
+        #                                                  is_full=request_data["extract_type"])
+        # return {"etl_success_row_count": insert_success}, 200
 
 
 extract_data_select_schema = {
@@ -68,7 +61,7 @@ class ExtractDataSelect(Resource):
         request_data = marshal(api_mirror.payload, extract_data_select_model)
         task = celery_select_entity_table.delay(execute_sql=request_data["sql"],
                                                 connection_id=request_data["connection_id"])
-        # select_return_data = TableOperate.select(sql=request_data["sql"],
+        # select_return_data = celery_select_entity_table(execute_sql=request_data["sql"],
         #                                          connection_id=request_data["connection_id"])
-        # return {"select_data": json_dumps(select_return_data)}, 200
+        # return select_return_data, 200
         return {"task_id": task.id}, 200

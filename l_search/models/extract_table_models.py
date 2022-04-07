@@ -99,10 +99,10 @@ class TableOperate:
 
                 column_name = str(col.column_name).lower()
 
-                if column_type == "geometry":
+                if column_type in settings.GEO_COLUMN_TYPE:
                     if is_stag is True:
                         column_name = settings.GEO_COLUMN_NAME_STAG
-                    column_type = "geometry(geometry, %s)" % settings.GEO_CRS_CODE
+                    column_type = "geometry(%s, %s)" % (column_type, settings.GEO_CRS_CODE)
 
                 create_table_column_info = create_table_column_info + column_stat % {
                     "column_name": column_name,
@@ -184,6 +184,7 @@ class TableOperate:
         logger.info("table %s start truncate" % table_name)
         truncate_stat = """truncate table %s""" % table_name
         logger.info("table %s truncate sql: %s" % (table_name, truncate_stat))
+
         db.session.execute(truncate_stat)
 
         cls.db_commit(is_commit=is_commit)

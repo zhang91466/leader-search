@@ -9,11 +9,10 @@ from l_search import models
 from l_search.handlers.meta_operation import Meta
 from l_search.models.extract_table_models import DBSession
 from l_search.utils.logger import Logger
+from l_search.query_runner import get_query_runner
+
 
 logger = Logger()
-
-
-
 
 
 class MetaDetector:
@@ -23,6 +22,7 @@ class MetaDetector:
         self.connection = DBSession(connection_info=self.connection_info)
         logger.info("开始连接目标数据库")
         self.source_meta_data = MetaData()
+        self.session = self.connection.session
 
         if connection_info.db_type in [models.DBObjectType("greenplum").value,
                                        models.DBObjectType("postgresql").value]:
@@ -37,6 +37,9 @@ class MetaDetector:
 
         logger.info("目标数据库连接完成")
 
+        self.query_runner = get_query_runner(query_runner_type=connection_info.db_type,
+                                             table_info=None)
+
     @staticmethod
     def is_extract_filter(column_data):
         result = False
@@ -44,14 +47,26 @@ class MetaDetector:
             result = True
         return result
 
-    @staticmethod
-    def init_column_type(column_data):
+    def init_column_type(self, table_name, column_data):
         column_type = ""
         column_length = ""
 
         if str(column_data.name).lower() in settings.GEO_COLUMN_NAME:
+
             column_type = "geometry"
             column_length = ""
+
+            # check geo z
+            check_geo_z_stat = self.query_runner.get_check_geo_z_stat(geo_col=column_data.name,
+                                                   table_name=table_name)
+
+            one_row = self.session.execute(check_geo_z_stat).first()
+            if one_row:
+                from shapely.wkt import loads
+                one_row_geo_load = loads(one_row[settings.GEO_COLUMN_NAME_STAG])
+                if one_row_geo_load.has_z:
+                    column_type = "geometryZ"
+
         else:
             if not isinstance(column_data.type, NullType):
                 try:
@@ -77,11 +92,15 @@ class MetaDetector:
         :param table_object: sqlalchemy table model
         :return:
         """
-        result = {"table_name": table_object.name}
+        result = {"table_name": table_object.name,
+                  "has_been_dropped": False,
+                  "dropped_time": None
+                  }
         columns_info_list = []
         i = 1
         for c in table_object.columns:
-            column_type, column_type_length = self.init_column_type(c)
+            column_type, column_type_length = self.init_column_type(table_name=table_object.name,
+                                                                    column_data=c)
             column_info = {
                 "column_name": c.name,
                 "column_type": column_type,
@@ -131,17 +150,3 @@ class MetaDetector:
                                               input_meta=table_detail_info))
 
         return result
-
-    def check_meta(self):
-        """
-        遍历meta里面指定的表
-	    查看结构是否存在问题
-        """
-        store_table_info = models.TableInfo.get_tables(connection_info=self.connection_info)
-        list_tables = [x.table_info for x in store_table_info]
-        return self.detector_schema(tables=list_tables)
-
-    def execute_select_sql(self, sql_text):
-        session = self.connection.session
-        execute_data = session.execute(sql_text).all()
-        return [dict(row) for row in execute_data]

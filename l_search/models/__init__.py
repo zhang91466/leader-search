@@ -113,6 +113,7 @@ def table_info_primary_id_value(context):
         str(context.get_current_parameters()["connection_id"]) + context.get_current_parameters()["table_name"]).encode(
         'utf-8')).hexdigest()
 
+
 def table_info_table_name_alias(context):
     return context.get_current_parameters()["table_name"]
 
@@ -128,6 +129,8 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
     is_entity = Column(db.Boolean, default=False)
     table_extract_col = Column(db.String(150), nullable=True)
     latest_extract_date = Column(db.DateTime(), nullable=True)
+    has_been_dropped = Column(db.Boolean, default=False)
+    dropped_time = Column(db.DateTime(), nullable=True)
 
     __table_args__ = (
         db.Index("table_info_connection_id_table_name_index", "connection_id", "table_name", unique=True),)
@@ -142,15 +145,18 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
                    table_id=None,
                    table_name=None,
                    table_name_alias=None,
-                   is_entity=None):
+                   is_entity=None,
+                   source_table_exists=True):
         """
         元数据表信息提取sql生成
         :param connection_info: object DBConnect
         :param is_entity: 已经实体化
         :param connection_id:  DBConnect id
         :param table_name: 筛选表 单个或多个(a|b|c)
+        :param source_table_exists: 目标表需存在
         :return:sql query
         """
+
         def explain_table_name(import_table_name):
             if isinstance(import_table_name, str):
                 if "|" in import_table_name:
@@ -166,13 +172,18 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
         get_tables_query = cls.query
 
         if connection_id:
-            get_tables_query = get_tables_query.filter(cls.connection_id == connection_id)
+            if isinstance(connection_id, str):
+                connection_id = [connection_id]
+
+            get_tables_query = get_tables_query.filter(cls.connection_id.in_(connection_id))
         elif connection_info:
             get_tables_query = get_tables_query.filter(cls.connection == connection_info)
             connection_id = connection_info.id
 
         if table_id is not None:
-            get_tables_query = get_tables_query.filter(cls.id == table_id)
+            if isinstance(table_id, str):
+                table_id = [table_id]
+            get_tables_query = get_tables_query.filter(cls.id.in_(table_id))
         elif table_name is not None:
             table_name_list = explain_table_name(import_table_name=table_name)
             get_tables_query = get_tables_query.filter(func.lower(cls.table_name).in_(table_name_list))
@@ -181,12 +192,15 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
             get_tables_query = get_tables_query.filter(func.lower(cls.table_name_alias).in_(table_name_list))
         else:
             if connection_id is not None:
-                logger.debug("查询链接id(%d)下的所有表" % (connection_id))
+                logger.debug("查询链接id(%s)下的所有表" % (str(connection_id)))
             else:
                 logger.debug("查询所记录的所有表")
 
         if is_entity is not None:
             get_tables_query = get_tables_query.filter(cls.is_entity == is_entity)
+
+        if source_table_exists:
+            get_tables_query = get_tables_query.filter(cls.has_been_dropped == False)
 
         return get_tables_query.all()
 
@@ -214,6 +228,16 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
                                          col_not_in=[cls.id.key, cls.created_at.key],
                                          update_index=[cls.connection_id, cls.table_name])
         return execute_result
+
+    @classmethod
+    def delete_table_info(cls, table_info):
+        table_info.has_been_dropped = True
+        table_info.dropped_time = db.func.now()
+        db.session.add(table_info)
+
+        TableDetail.query.filter(TableDetail.table_info == table_info).update({TableDetail.is_extract: False})
+
+        db.session.commit()
 
 
 def table_detail_primary_id_value(context):
@@ -315,7 +339,7 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
         execute_result = cls.upsert_base(input_data=input_data,
                                          col_not_in=[cls.id.key, cls.created_at.key],
                                          update_index=[cls.table_info_id, cls.column_name],
-                                         is_commit=False)
+                                         is_commit=True)
 
         return execute_result
 
@@ -365,4 +389,3 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
             return ",".join(column_name_list)
         else:
             return column_name_list
-

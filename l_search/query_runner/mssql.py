@@ -28,6 +28,17 @@ class Mssql(BasicQueryRunner):
 
         return where_stmt
 
+    @staticmethod
+    def geo_col_to_str(geo_col):
+        return "%s.STGeometryN(1).ToString() as %s" % (geo_col, settings.GEO_COLUMN_NAME_STAG)
+
+    @classmethod
+    def get_check_geo_z_stat(cls, geo_col, table_name):
+        geo_str = cls.geo_col_to_str(geo_col=geo_col)
+        return "select %(col)s from %(tab)s where %(col_no_as)s is not null" % {"col": geo_str,
+                                                                                "tab": table_name,
+                                                                                "col_no_as": geo_str.split("as")[0]}
+
     def extract(self, increment=True):
         table_name = self.table_info.entity_table_name()
         logger.info("%s start extract" % table_name)
@@ -36,7 +47,7 @@ class Mssql(BasicQueryRunner):
 
         if geo_col:
             extract_stmt = extract_stmt % {
-                "geo_col": "%s.STGeometryN(1).ToString() as %s" % (geo_col, settings.GEO_COLUMN_NAME_STAG)}
+                "geo_col": self.geo_col_to_str(geo_col=geo_col)}
 
         if increment is True:
             extract_stmt = extract_stmt + self.increment_where_stmt()
@@ -44,7 +55,8 @@ class Mssql(BasicQueryRunner):
         logger.info("%s extract stmt %s" % (table_name, extract_stmt))
 
         try:
-            for count, partial_df in enumerate(pd.read_sql(extract_stmt, self.source_db_engine, chunksize=self.chunk_size)):
+            for count, partial_df in enumerate(
+                    pd.read_sql(extract_stmt, self.source_db_engine, chunksize=self.chunk_size)):
 
                 if len(partial_df) == 0:
                     # 没有数据直接退出
@@ -88,7 +100,7 @@ class Mssql(BasicQueryRunner):
         except Exception as e:
             error_message = "%s extract failed. Error Info: %s" % (table_name, e)
             logger.error(error_message)
-            raise BadRequest(error_message)
+            return error_message
 
 
 register(Mssql)
