@@ -31,8 +31,8 @@ class ExtractAndLoad(Resource):
         """
         request_data = marshal(api_mirror.payload, extract_para_model)
         task = celery_extract_data_from_source.delay(connection_info_list=request_data["connections"],
-                                                                 table_info_list=request_data["tables"],
-                                                                 is_full=request_data["extract_type"])
+                                                     table_id_list=request_data["tables"],
+                                                     is_full=request_data["extract_type"])
         return {"task_id": task.id}, 200
 
         # insert_success = celery_extract_data_from_source(connection_info_list=request_data["connections"],
