@@ -131,3 +131,5 @@ db/finance.db*
 
 logs/*
 whoosh_index/*
+
+*.zip
