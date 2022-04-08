@@ -10,6 +10,7 @@ from l_search import models
 from l_search.models.base import db
 from l_search import settings
 from l_search.utils.logger import Logger
+from l_search.tasks.monitor import JobLock
 
 from werkzeug.exceptions import BadRequest
 from datetime import datetime
@@ -201,20 +202,29 @@ def extract_tables(connection_info_list=None, table_id_list=None, is_full=True):
 
     for table_info in all_table:
 
-        if is_full is True:
-            increment = False
-        else:
-            if table_info.latest_extract_date is not None:
-                increment = True
+        job_lock_name = "data_extract_%s" % table_info.id
+
+        while True:
+            if JobLock.set_job_lock(job_name=job_lock_name):
+
+                if is_full is True:
+                    increment = False
+                else:
+                    if table_info.latest_extract_date is not None:
+                        increment = True
+                    else:
+                        increment = False
+
+                etl = DataExtractLoad(table_info=table_info)
+
+                input_cnt, delete_cnt, error_message = etl.run(increment=increment)
+
+                execute_result[table_info.table_name] = {"input_count": input_cnt,
+                                                         "delete_count": delete_cnt,
+                                                         "error_info": error_message}
+                JobLock.del_job_lock()
+                break
             else:
-                increment = False
-
-        etl = DataExtractLoad(table_info=table_info)
-
-        input_cnt, delete_cnt, error_message = etl.run(increment=increment)
-
-        execute_result[table_info.table_name] = {"input_count": input_cnt,
-                                                 "delete_count": delete_cnt,
-                                                 "error_info": error_message}
+                JobLock.wait()
 
     return execute_result

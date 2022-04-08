@@ -14,3 +14,5 @@ from l_search.app import celeryapp, create_app
 app = create_app()
 celery = celeryapp.create_celery_app(app)
 celeryapp.celery = celery
+
+# celery.control.revoke(redis_connection.hget(job_name, "task"), terminate=True)
