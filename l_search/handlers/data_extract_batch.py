@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 """
 @time:2022/3/11
-@author:zhangwei
+@author:simonzhang
 @file:data_extract_batch
 """
 from l_search.models.extract_table_models import TableOperate

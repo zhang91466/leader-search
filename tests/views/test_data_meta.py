@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 """
 @time:2022/2/25
-@author:zhangwei
+@author:simonzhang
 @file:test_data_meta
 """
 from tests import BaseTestCase

@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 """
 @time:2021/11/29
-@author:zhangwei
+@author:simonzhang
 @file:__init__.py
 """
 from flask_restx import Api

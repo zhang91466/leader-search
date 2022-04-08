@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 """
 @time:2022/3/17
-@author:zhangwei
+@author:simonzhang
 @file:test_data_extract_batch
 """
 from tests.handle.test_source_meta_detector import TestMetaDetector

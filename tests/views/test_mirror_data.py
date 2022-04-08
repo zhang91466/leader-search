@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 """
 @time:2022/3/22
-@author:zhangwei
+@author:simonzhang
 @file:test_mirror_data
 """
 from tests import BaseTestCase

@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 """
 @time:2021/11/26
-@author:zhangwei
+@author:simonzhang
 @file:mirror_data
 """
 from flask_restx import Namespace, Resource, fields, marshal

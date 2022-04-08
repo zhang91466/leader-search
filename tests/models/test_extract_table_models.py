@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 """
 @time:2022/3/3
-@author:zhangwei
+@author:simonzhang
 @file:test_extract_table_models
 """
 from tests import BaseTestCase

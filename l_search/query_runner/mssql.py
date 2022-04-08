@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 """
 @time:2022/3/11
-@author:zhangwei
+@author:simonzhang
 @file:mssql
 """
 from l_search.query_runner import BasicQueryRunner

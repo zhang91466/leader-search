@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 """
 @time:2021/11/30
-@author:zhangwei
+@author:simonzhang
 @file:meta_operation
 """
 from l_search.utils.logger import Logger

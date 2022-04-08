@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 """
 @time:2021/11/24
-@author:zhangwei
+@author:simonzhang
 @file:manage
 """
 from l_search.cli import manager

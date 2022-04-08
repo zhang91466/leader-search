@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 """
 @time:2022/3/11
-@author:zhangwei
+@author:simonzhang
 @file:__init__.py
 """
 from l_search.utils.logger import Logger

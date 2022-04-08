@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 """
 @time:2021/11/24
-@author:zhangwei
+@author:simonzhang
 @file:__init__.py
 """
 import os
@@ -15,13 +15,13 @@ LOGGER_LEVEL = os.environ.get("LSEARCH_LOGGER_LEVEL", "INFO")
 SQLALCHEMY_DATABASE_URI = os.environ.get(
     "LSEARCH_DB_CONNECT_URL", "postgresql+psycopg2://postgres:123456xxx@192.168.1.225:6688/l_search")
 
-CELERY_BROKER_URL = os.environ.get(
-    "CELERY_BROKER_URL", os.environ.get("REDIS_URL", "redis://192.168.1.224:6379/2")
-)
+_REDIS_URL = os.environ.get("REDIS_URL", "redis://192.168.1.224:6379/2")
 
-CELERY_RESULT_BACKEND = os.environ.get(
-    "CELERY_RESULT_BACKEND", os.environ.get("REDIS_URL", "redis://192.168.1.224:6379/2")
-)
+REDIS_URL = os.environ.get("LSEARCH_REDIS_URL", _REDIS_URL)
+
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", _REDIS_URL)
+
+CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", _REDIS_URL)
 
 # Query Runners
 default_query_runners = [
