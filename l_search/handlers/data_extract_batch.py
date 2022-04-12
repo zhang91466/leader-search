@@ -206,24 +206,27 @@ def extract_tables(connection_info_list=None, table_id_list=None, is_full=True):
 
         while True:
             if JobLock.set_job_lock(job_name=job_lock_name):
-
-                if is_full is True:
-                    increment = False
-                else:
-                    if table_info.latest_extract_date is not None:
-                        increment = True
-                    else:
+                try:
+                    if is_full is True:
                         increment = False
+                    else:
+                        if table_info.latest_extract_date is not None:
+                            increment = True
+                        else:
+                            increment = False
 
-                etl = DataExtractLoad(table_info=table_info)
+                    etl = DataExtractLoad(table_info=table_info)
 
-                input_cnt, delete_cnt, error_message = etl.run(increment=increment)
+                    input_cnt, delete_cnt, error_message = etl.run(increment=increment)
 
-                execute_result[table_info.table_name] = {"input_count": input_cnt,
-                                                         "delete_count": delete_cnt,
-                                                         "error_info": error_message}
-                JobLock.del_job_lock()
-                break
+                    execute_result[table_info.table_name] = {"input_count": input_cnt,
+                                                             "delete_count": delete_cnt,
+                                                             "error_info": error_message}
+                except Exception as e:
+                    logger.error("extract_tables: %s" % e)
+                finally:
+                    JobLock.del_job_lock(job_name=job_lock_name)
+                    break
             else:
                 JobLock.wait()
 

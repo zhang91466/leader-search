@@ -6,19 +6,27 @@
 """
 from l_search import redis_connection
 from l_search import settings
+from l_search.utils.logger import Logger
 
 from datetime import datetime
 import time
 
+logger = Logger()
 
 class JobLock:
+    LOCK_NAME = "Lock_&_%s"
+
+    @classmethod
+    def set_job_name(cls, job_name):
+        return cls.LOCK_NAME % job_name
 
     @classmethod
     def set_job_lock(cls, job_name):
-        now = datetime.now()
+        job_name = cls.set_job_name(job_name=job_name)
         last_time = redis_connection.get(job_name)
 
         if last_time is None:
+            now = datetime.now()
             redis_connection.set(job_name, now.strftime("%Y-%m-%d %H:%M:%S"))
             redis_connection.expire(job_name, settings.CELERY_TASK_FORCE_EXPIRE_SECOND)
             return True
@@ -27,8 +35,16 @@ class JobLock:
 
     @classmethod
     def del_job_lock(cls, job_name):
-        redis_connection.delete(job_name)
+        redis_connection.delete(cls.set_job_name(job_name=job_name))
 
     @classmethod
     def wait(cls):
         time.sleep(1)
+
+    @classmethod
+    def del_all_job(cls):
+        keys = redis_connection.keys("%s*" % cls.LOCK_NAME % "")
+        cnt = len(keys)
+        if cnt > 0:
+            redis_connection.delete(*keys)
+            logger.info("Delete all job count: %d" % cnt)

@@ -20,7 +20,7 @@ class LSearch(Flask):
 
 
 def create_app():
-    from .models.base import db, create_ods_schema
+    from .models.base import db
     from . import migrate
     app = LSearch()
 
@@ -34,7 +34,11 @@ def create_app():
     api.init_app(app)
 
     with app.app_context():
+        from .models.base import create_ods_schema
         create_ods_schema()
+
+        from .tasks.monitor import JobLock
+        JobLock.del_all_job()
 
     return app
 

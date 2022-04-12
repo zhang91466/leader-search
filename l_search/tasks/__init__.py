@@ -8,6 +8,9 @@ from l_search import celeryapp
 from l_search.utils import json_dumps
 from l_search import settings
 from l_search.tasks.monitor import JobLock
+from l_search.utils.logger import Logger
+
+logger = Logger()
 
 celery = celeryapp.celery
 
@@ -18,15 +21,22 @@ def celery_sync_table_meta(connection_id, table_list=None, table_name_prefix=Non
     from l_search import models
 
     job_lock_name = "sysn_table_meta_connection_%d" % connection_id
-    
+    schema_sync_info = "error"
+
     while True:
         if JobLock.set_job_lock(job_name=job_lock_name):
-            connection_info = models.DBConnect.get_by_domain(connection_id=connection_id)
-            meta_detector = MetaDetector(connection_info=connection_info[0])
-            schema_sync_info = meta_detector.detector_schema(tables=table_list,
-                                                             table_name_prefix=table_name_prefix)
-            JobLock.del_job_lock(job_name=job_lock_name)
-            return schema_sync_info
+
+            try:
+                connection_info = models.DBConnect.get_by_domain(connection_id=connection_id)
+                meta_detector = MetaDetector(connection_info=connection_info[0])
+                schema_sync_info = meta_detector.detector_schema(tables=table_list,
+                                                                 table_name_prefix=table_name_prefix)
+            except Exception as e:
+                logger.error("celery_sync_table_meta: %s" % e)
+            finally:
+                JobLock.del_job_lock(job_name=job_lock_name)
+                return schema_sync_info
+
         else:
             JobLock.wait()
 
@@ -43,6 +53,24 @@ def celery_extract_data_from_source(connection_info_list, table_id_list, is_full
 @celery.task(time_limit=settings.CELERY_TASK_FORCE_EXPIRE_SECOND)
 def celery_select_entity_table(execute_sql, connection_id):
     from l_search.models.extract_table_models import TableOperate
-    select_return_data = TableOperate.select(sql=execute_sql,
-                                             connection_id=connection_id)
-    return {"select_data": json_dumps(select_return_data)}
+    import hashlib
+
+    job_lock_name = "select_%s" % hashlib.md5(execute_sql.encode("utf-8")).hexdigest()
+    select_return_data = "error"
+
+    while True:
+
+        if JobLock.set_job_lock(job_name=job_lock_name):
+
+            try:
+                select_return_data = TableOperate.select(sql=execute_sql,
+                                                         connection_id=connection_id)
+                JobLock.del_job_lock(job_name=job_lock_name)
+                select_return_data = {"select_data": json_dumps(select_return_data)}
+            except Exception as e:
+                logger.error("celery_sync_table_meta: %s" % e)
+            finally:
+                JobLock.del_job_lock(job_name=job_lock_name)
+                return select_return_data
+        else:
+            JobLock.wait()

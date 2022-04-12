@@ -111,7 +111,7 @@ class DBConnect(db.Model, InsertObject, TimestampMixin):
 def table_info_primary_id_value(context):
     return hashlib.md5(str(
         str(context.get_current_parameters()["connection_id"]) + context.get_current_parameters()["table_name"]).encode(
-        'utf-8')).hexdigest()
+        "utf-8")).hexdigest()
 
 
 def table_info_table_name_alias(context):
@@ -244,7 +244,7 @@ def table_detail_primary_id_value(context):
     return hashlib.md5(str(
         str(context.get_current_parameters()["table_info_id"]) + context.get_current_parameters()[
             "column_name"]).encode(
-        'utf-8')).hexdigest()
+        "utf-8")).hexdigest()
 
 
 class TableDetail(db.Model, InsertObject, TimestampMixin):
