@@ -8,6 +8,7 @@ from l_search import celeryapp
 from l_search.utils import json_dumps
 from l_search import settings
 from l_search.tasks.monitor import JobLock
+from l_search import redis_connection
 from l_search.utils.logger import Logger
 
 logger = Logger()
@@ -74,3 +75,10 @@ def celery_select_entity_table(execute_sql, connection_id):
                 return select_return_data
         else:
             JobLock.wait()
+
+
+@celery.task(time_limit=settings.CELERY_TASK_FORCE_EXPIRE_SECOND)
+def task_beat():
+    from datetime import datetime
+    now = datetime.now()
+    redis_connection.set("task_beat", now.strftime("%Y-%m-%d %H:%M:%S"))

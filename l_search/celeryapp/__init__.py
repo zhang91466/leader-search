@@ -8,9 +8,15 @@ import ssl
 import sys
 
 from celery import Celery
+from celery.schedules import crontab
+
 CELERY_TASK_LIST = [
     'l_search.tasks',
 ]
+
+CELERY_BEAT_SCHEDULE = {"task_beat": {"task": "l_search.tasks.task_beat",
+                                      "args": (),
+                                      "schedule": crontab(minute="*/1")}}
 
 db_session = None
 celery = None
@@ -30,13 +36,16 @@ def create_celery_app(_app=None):
     from l_search.models.base import db
 
     celery = Celery(_app.import_name,
+                    enable_utc=True,
+                    timezone=_app.config["CELERY_TIMEZONE"],
                     broker=_app.config["CELERY_BROKER_URL"],
                     backend=_app.config['CELERY_RESULT_BACKEND'],
-                    include=CELERY_TASK_LIST)
+                    include=CELERY_TASK_LIST,
+                    beat_schedule=CELERY_BEAT_SCHEDULE)
     celery.conf.update(_app.config)
     always_eager = _app.config['TESTING'] or False
-    celery.conf.update({'CELERY_ALWAYS_EAGER': always_eager,
-                        'CELERY_RESULT_BACKEND': f"db+{_app.config['SQLALCHEMY_DATABASE_URI']}"})
+    celery.conf.update({"CELERY_ALWAYS_EAGER": always_eager,
+                        "CELERY_RESULT_BACKEND": f"db+{_app.config['SQLALCHEMY_DATABASE_URI']}"})
     celery.conf.CELERYD_TASK_SOFT_TIME_LIMIT = 300
     # celery.conf.CELERY_RESULT_SERIALIZER = 'pickle'
     # celery.conf.CELERY_TASK_SERIALIZER = 'pickle'
