@@ -14,7 +14,7 @@ CELERY_TASK_LIST = [
     'l_search.tasks',
 ]
 
-CELERY_BEAT_SCHEDULE = {"task_beat": {"task": "l_search.tasks.task_beat",
+CELERY_BEAT_SCHEDULE = {"task_beat": {"task": "l_search.tasks.schedule_main",
                                       "args": (),
                                       "schedule": crontab(minute="*/1")}}
 

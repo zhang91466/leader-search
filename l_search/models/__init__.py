@@ -176,7 +176,7 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
         get_tables_query = cls.query
 
         if connection_id:
-            if isinstance(connection_id, str):
+            if isinstance(connection_id, int):
                 connection_id = [connection_id]
 
             get_tables_query = get_tables_query.filter(cls.connection_id.in_(connection_id))
@@ -207,7 +207,8 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
             get_tables_query = get_tables_query.filter(cls.has_been_dropped == False)
 
         if need_crontab:
-            get_tables_query = get_tables_query.filter(cls.crontab_str != None)
+            get_tables_query = get_tables_query.filter(and_(cls.crontab_str != None,
+                                                            cls.crontab_last_ts <= get_now()))
 
         return get_tables_query.all()
 

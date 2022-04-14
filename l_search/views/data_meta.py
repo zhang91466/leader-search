@@ -65,9 +65,11 @@ table_info_schema = {
     "id": fields.String(description="表ID", ),
     "connection_id": fields.Integer(description="数据库连接ID"),
     "table_name": fields.String(description="表名"),
+    # 更新数据怎么规避必填项
+    "table_name_alias": fields.String(description="表名别名 为抽取后sql读取数据时,使用的表名,避免重名"),
     "table_extract_col": fields.String(description="表用于抽取的列名"),
-    "need_extract": fields.Boolean(description="表是否需要抽取"),
-    "latest_extract_date": fields.String(description="记录最新的抽取时间")
+    "latest_extract_date": fields.String(description="记录最新的抽取时间"),
+    "crontab_str": fields.String(description="crontab * * * * *")
 }
 table_info_model = api_meta.model("table_info_schema", table_info_schema)
 

@@ -5,10 +5,9 @@
 @file:__init__.py
 """
 from l_search import celeryapp
-from l_search.utils import json_dumps
 from l_search import settings
 from l_search.tasks.monitor import JobLock
-from l_search import redis_connection
+from l_search.utils import json_dumps
 from l_search.utils.logger import Logger
 
 logger = Logger()
@@ -78,6 +77,40 @@ def celery_select_entity_table(execute_sql, connection_id):
 
 
 @celery.task(time_limit=settings.CELERY_TASK_FORCE_EXPIRE_SECOND)
-def task_beat():
-    from l_search.utils import get_now
-    redis_connection.set("task_beat", get_now(is_str=True))
+def schedule_main():
+    from l_search import redis_connection
+    from croniter import croniter
+    from l_search.utils import get_now, datetime, pytz
+    from l_search.handlers.data_extract_batch import get_table_by_crontab
+    from l_search import models
+
+    scheduler_main_time_name = "l_search_scheduler_main_time"
+    scheduler_main_time_str = redis_connection.get(scheduler_main_time_name)
+    if scheduler_main_time_str is None:
+        scheduler_main_time_str = get_now(is_str=True)
+        redis_connection.set(scheduler_main_time_name, scheduler_main_time_str)
+    else:
+        scheduler_main_time_str = scheduler_main_time_str.decode("utf8")
+
+    scheduler_main_time = datetime.datetime.strptime(scheduler_main_time_str, "%Y-%m-%d %H:%M:%S").replace(
+        tzinfo=pytz.timezone(settings.TIMEZONE))
+
+    logger.info("Meta sync latest time %s" % scheduler_main_time_str)
+    # sync meta
+    meta_sync_crontab = croniter("41 2 * * *", scheduler_main_time)
+
+    if get_now() >= meta_sync_crontab.get_next(datetime.datetime):
+        logger.info("Meta sync start")
+        all_connection_infos = models.DBConnect.get_by_domain()
+        for c_info in all_connection_infos:
+            celery_sync_table_meta.delay(connection_id=c_info["id"])
+
+        redis_connection.set(scheduler_main_time_name, get_now(is_str=True))
+        logger.info("Meta sync end")
+
+    # extract data
+    need_execute_tables = get_table_by_crontab()
+    if len(need_execute_tables) > 0:
+        logger.info("Table data extract start: %s" % str(need_execute_tables))
+        celery_extract_data_from_source.delay(table_id_list=need_execute_tables)
+        logger.info("Table data extract end")
