@@ -13,3 +13,4 @@ sql-metadata == 2.4.0
 geopandas == 0.10.2
 pymssql == 2.2.4
 geoalchemy2 == 0.10.2
+croniter == 1.3.4

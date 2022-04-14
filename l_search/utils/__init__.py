@@ -4,6 +4,7 @@
 @author:simonzhang
 @file:__init__.py
 """
+import pytz
 import datetime
 import simplejson
 import decimal
@@ -11,6 +12,7 @@ import uuid
 import binascii
 from sqlalchemy.orm.query import Query
 from psycopg2.extras import Range
+from l_search import settings
 
 
 class JSONEncoder(simplejson.JSONEncoder):
@@ -77,3 +79,13 @@ def json_dumps(data, *args, **kwargs):
     # Using ignore_nan = False will make Python render nan as NaN, leading to parse error in front-end
     kwargs.setdefault('ignore_nan', True)
     return simplejson.dumps(data, *args, **kwargs)
+
+
+def get_now(is_str=False, dt_format="%Y-%m-%d %H:%M:%S"):
+    new = datetime.datetime.now(tz=pytz.timezone(settings.TIMEZONE))
+    if is_str is False:
+        return new
+    else:
+        return new.strftime(dt_format)
+
+# 修改所有的now都成为上面那个

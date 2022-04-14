@@ -51,6 +51,8 @@ def upgrade():
                     sa.Column('latest_extract_date', sa.DateTime(), nullable=True),
                     sa.Column('has_been_dropped', sa.Boolean(), nullable=False),
                     sa.Column('dropped_time', sa.DateTime(), nullable=True),
+                    sa.Column('crontab_str', sa.String(length=50), nullable=True),
+                    sa.Column('crontab_last_ts', sa.DateTime(), nullable=True),
                     sa.ForeignKeyConstraint(['connection_id'], ['db_connect_info.id'], ),
                     sa.PrimaryKeyConstraint('id')
                     )

@@ -32,7 +32,9 @@ CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", _REDIS_URL)
 
 CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", _REDIS_URL)
 
-CELERY_TIMEZONE = "Asia/Shanghai"
+TIMEZONE = os.environ.get("LSEARCH_TIMEZONE", "Asia/Shanghai")
+
+CELERY_TIMEZONE = os.environ.get("CELERY_TIMEZONE", TIMEZONE)
 
 # Query Runners
 default_query_runners = [

@@ -5,13 +5,12 @@
 @file:logger.py
 """
 from l_search import settings
-from l_search.utils import trace
+from l_search.utils import trace, get_now
 
 import logging
 import logging.config
 import json
 import os as pyos
-from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
 
@@ -122,7 +121,7 @@ class Logger:
 
         log_logging = "Level:%s|TS:%s|Filename:%s|Rownum:%d|Func:%s" % (
             level,
-            datetime.now().strftime('%Y/%m/%d %H:%M:%S'),
+            get_now(is_str=True),
             co_filename,
             f_lineno,
             co_name)

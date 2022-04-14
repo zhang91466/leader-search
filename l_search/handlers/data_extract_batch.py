@@ -9,11 +9,11 @@ from l_search.query_runner import get_query_runner
 from l_search import models
 from l_search.models.base import db
 from l_search import settings
+from l_search.utils import get_now
 from l_search.utils.logger import Logger
 from l_search.tasks.monitor import JobLock
 
 from werkzeug.exceptions import BadRequest
-from datetime import datetime
 
 logger = Logger()
 
@@ -51,8 +51,7 @@ class DataExtractLoad:
         source_col_str = ""
         primary_column_name = None
 
-        now = datetime.now()
-        now = now.strftime("%Y-%m-%d, %H:%M:%S")
+        now = get_now(is_str=True)
 
         for col in column_info_list:
 
@@ -128,8 +127,7 @@ class DataExtractLoad:
         if self.check_row_count() is False:
             self.query_runner.extract_primary_id()
 
-            now = datetime.now()
-            now = now.strftime("%Y-%m-%d, %H:%M:%S")
+            now = get_now(is_str=True)
 
             delete_row_count = TableOperate.update_tsrange_for_delete_data(table_info=self.table_info,
                                                                            upper_datetime=now,
@@ -191,7 +189,6 @@ class DataExtractLoad:
 
 
 def extract_tables(connection_info_list=None, table_id_list=None, is_full=True):
-
     if connection_info_list is None and table_id_list is None:
         all_table = models.TableInfo.get_tables(source_table_exists=True)
     else:

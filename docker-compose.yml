@@ -8,6 +8,8 @@ services:
       environment:
         - POSTGRES_PASSWORD=123456xxx
         - PGDATA=/var/lib/postgresql/data/pgdata
+        - TZ=Asia/Shanghai
+        - PGTZ=Asia/Shanghai
       ports:
         - 6688:5432
       volumes:
@@ -15,7 +17,7 @@ services:
       deploy:
         resources:
           limits:
-            memory: 4G
+            memory: 1G
 
     redis:
       image: redis:alpine
@@ -36,13 +38,14 @@ services:
       depends_on:
         - db
         - redis
-      container_name: l_search_v1
+      container_name: l_search-main
       environment:
         - LSEARCH_DB_CONNECT_URL=postgresql+psycopg2://postgres:123456xxx@db/l_search
         - REDIS_URL=redis://redis/2
         - LSEARCH_LOGGER_LEVEL=DEBUG
         - EXTRACT_CHUNK_SIZE=50000
         - GEO_CRS_CODE=4549
+        - LSEARCH_TIMEZONE=Asia/Shanghai
       ports:
         - 6680:5000
       working_dir: /app
@@ -50,21 +53,22 @@ services:
       deploy:
         resources:
           limits:
-            memory: 2G
+            memory: 512M
 
-    celery_work:
+    celery_work_1:
       build:
         context: .
         dockerfile: Dockerfile.main
       depends_on:
         - l_search
-      container_name: celery_work
+      container_name: l_search-work-1
       environment:
         - LSEARCH_DB_CONNECT_URL=postgresql+psycopg2://postgres:123456xxx@db/l_search
         - REDIS_URL=redis://redis/2
         - LSEARCH_LOGGER_LEVEL=DEBUG
         - EXTRACT_CHUNK_SIZE=50000
         - GEO_CRS_CODE=4549
+        - LSEARCH_TIMEZONE=Asia/Shanghai
       working_dir: /app
       command: bash -c "celery -A l_search.celeryapp.celery_worker.celery worker --concurrency=3 -E"
       deploy:
@@ -77,14 +81,15 @@ services:
         context: .
         dockerfile: Dockerfile.main
       depends_on:
-        - celery_work
-      container_name: celery_beat
+        - celery_work_1
+      container_name: l_search-schedule
       environment:
         - LSEARCH_DB_CONNECT_URL=postgresql+psycopg2://postgres:123456xxx@db/l_search
         - REDIS_URL=redis://redis/2
         - LSEARCH_LOGGER_LEVEL=DEBUG
         - EXTRACT_CHUNK_SIZE=50000
         - GEO_CRS_CODE=4549
+        - LSEARCH_TIMEZONE=Asia/Shanghai
       working_dir: /app
       command: bash -c "celery -A l_search.celeryapp.celery_worker.celery beat"
       deploy:
@@ -99,11 +104,12 @@ services:
         dockerfile: Dockerfile.main
       depends_on:
         - l_search
-      container_name: flower
+      container_name: l_search-work-view
       environment:
         - LSEARCH_DB_CONNECT_URL=postgresql+psycopg2://postgres:123456xxx@db/l_search
         - REDIS_URL=redis://redis/2
         - LSEARCH_LOGGER_LEVEL=DEBUG
+        - LSEARCH_TIMEZONE=Asia/Shanghai
       working_dir: /app
       command: bash -c "celery -A l_search.celeryapp.celery_worker.celery flower --port=7789"
       ports:
@@ -111,4 +117,4 @@ services:
       deploy:
         resources:
           limits:
-            memory: 1G
+            memory: 256M

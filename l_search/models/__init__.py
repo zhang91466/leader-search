@@ -4,12 +4,13 @@
 @author:simonzhang
 @file:__init__.py
 """
-
 import enum
 import hashlib
+from croniter import croniter
 from .base import db, Column, InsertObject, TimestampMixin
 from sqlalchemy import or_, and_, func
 from l_search import settings
+from l_search.utils import get_now, datetime
 from l_search.utils.logger import Logger
 
 logger = Logger()
@@ -131,6 +132,8 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
     latest_extract_date = Column(db.DateTime(), nullable=True)
     has_been_dropped = Column(db.Boolean, default=False)
     dropped_time = Column(db.DateTime(), nullable=True)
+    crontab_str = Column(db.String(50), nullable=True)
+    crontab_last_ts = Column(db.DateTime(), nullable=True)
 
     __table_args__ = (
         db.Index("table_info_connection_id_table_name_index", "connection_id", "table_name", unique=True),)
@@ -146,7 +149,8 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
                    table_name=None,
                    table_name_alias=None,
                    is_entity=None,
-                   source_table_exists=True):
+                   source_table_exists=True,
+                   need_crontab=False):
         """
         元数据表信息提取sql生成
         :param connection_info: object DBConnect
@@ -202,6 +206,9 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
         if source_table_exists:
             get_tables_query = get_tables_query.filter(cls.has_been_dropped == False)
 
+        if need_crontab:
+            get_tables_query = get_tables_query.filter(cls.crontab_str != None)
+
         return get_tables_query.all()
 
     @classmethod
@@ -224,6 +231,13 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
             if "id" in d and d["id"] is None:
                 d.pop("id")
 
+            if "crontab_str" in d and d["crontab_str"] is not None:
+                if croniter.is_valid(d["crontab_str"]) is False:
+                    d.pop("crontab_str")
+                else:
+                    crontab_iter = croniter(d["crontab_str"], get_now())
+                    d["crontab_last_ts"] = crontab_iter.get_next(datetime.datetime)
+
         execute_result = cls.upsert_base(input_data=input_data,
                                          col_not_in=[cls.id.key, cls.created_at.key],
                                          update_index=[cls.connection_id, cls.table_name])
@@ -232,7 +246,7 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
     @classmethod
     def delete_table_info(cls, table_info):
         table_info.has_been_dropped = True
-        table_info.dropped_time = db.func.now()
+        table_info.dropped_time = get_now()
         db.session.add(table_info)
 
         TableDetail.query.filter(TableDetail.table_info == table_info).update({TableDetail.is_extract: False})

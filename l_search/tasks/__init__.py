@@ -79,6 +79,5 @@ def celery_select_entity_table(execute_sql, connection_id):
 
 @celery.task(time_limit=settings.CELERY_TASK_FORCE_EXPIRE_SECOND)
 def task_beat():
-    from datetime import datetime
-    now = datetime.now()
-    redis_connection.set("task_beat", now.strftime("%Y-%m-%d %H:%M:%S"))
+    from l_search.utils import get_now
+    redis_connection.set("task_beat", get_now(is_str=True))

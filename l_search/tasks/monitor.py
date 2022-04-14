@@ -6,9 +6,9 @@
 """
 from l_search import redis_connection
 from l_search import settings
+from l_search.utils import get_now
 from l_search.utils.logger import Logger
 
-from datetime import datetime
 import time
 
 logger = Logger()
@@ -26,8 +26,7 @@ class JobLock:
         last_time = redis_connection.get(job_name)
 
         if last_time is None:
-            now = datetime.now()
-            redis_connection.set(job_name, now.strftime("%Y-%m-%d %H:%M:%S"))
+            redis_connection.set(job_name, get_now(is_str=True))
             redis_connection.expire(job_name, settings.CELERY_TASK_FORCE_EXPIRE_SECOND)
             return True
         else:
