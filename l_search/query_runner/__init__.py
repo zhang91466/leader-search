@@ -170,8 +170,11 @@ class BasicQueryRunner:
         try:
             for count, partial_df in enumerate(
                     pd.read_sql(select_stmt, self.source_db_engine, chunksize=self.chunk_size)):
+
+                logger.info("%s extracting loop %d" % (self.table_info.table_name, count))
+
                 partial_df.to_sql(con=self.db_engine,
-                                  if_exists="replace",
+                                  if_exists="append",
                                   schema=settings.ODS_STAG_SCHEMA_NAME,
                                   name=self.table_info.entity_table_name(),
                                   index=False)

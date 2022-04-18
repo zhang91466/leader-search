@@ -6,6 +6,7 @@
 """
 from l_search.utils.logger import Logger
 from l_search import models
+from l_search.models.base import db
 from l_search import settings
 
 logger = Logger()
@@ -51,7 +52,7 @@ class Meta:
         return connection_info
 
     @classmethod
-    def get_table_info(cls, connection_id, table_name=None):
+    def get_table_info(cls, connection_id, table_id=None, table_name=None):
         """
         获取多个或单个表的列信息
         :param connection_id:
@@ -59,6 +60,7 @@ class Meta:
         :return:
         """
         table_name_list = models.TableInfo.get_tables(connection_id=connection_id,
+                                                      table_id=table_id,
                                                       table_name=table_name)
 
         return table_name_list
@@ -66,11 +68,14 @@ class Meta:
     @classmethod
     def upsert_table_info(cls, input_data):
 
+        upsert_data = []
+
         if isinstance(input_data, dict):
             input_data = [input_data]
-
-        upsert_data = models.TableInfo.upsert(input_data=input_data)
-
+        for d in input_data:
+            upsert_data.append(models.TableInfo.upsert(input_data=d,
+                                                       auto_commit=False))
+        db.session.commit()
         return upsert_data
 
     @classmethod
@@ -87,11 +92,14 @@ class Meta:
     @classmethod
     def upsert_table_detail(cls, input_data):
 
+        upsert_data = []
+
         if isinstance(input_data, dict):
             input_data = [input_data]
-
-        upsert_data = models.TableDetail.upsert(input_data=input_data)
-
+        for d in input_data:
+            upsert_data.append(models.TableDetail.upsert(auto_commit=False,
+                                                         input_data=d))
+        db.session.commit()
         return upsert_data
 
     @classmethod
@@ -112,13 +120,18 @@ class Meta:
         table_detail_insert_data = input_meta.pop("columns")
 
         input_meta["connection_id"] = connection_info.id
-        table_info = models.TableInfo.upsert(input_data=input_meta)
+        table_info = models.TableInfo.upsert_bulk(input_data=input_meta)
 
         for col_info in table_detail_insert_data:
             col_info["table_info_id"] = table_info[0].id
 
-        insert_row = models.TableDetail.upsert(input_data=table_detail_insert_data)
+        insert_row = models.TableDetail.upsert_bulk(input_data=table_detail_insert_data)
 
         return {"table_info_id": table_info[0].id,
                 "table_name": input_meta["table_name"],
                 "column_count": len(insert_row)}
+
+    @classmethod
+    def get_table_by_crontab(cls):
+        need_crontab_table_list = models.TableInfo.get_tables(need_crontab=True)
+        return [x.id for x in need_crontab_table_list]

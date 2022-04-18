@@ -6,6 +6,8 @@
 """
 import enum
 import hashlib
+from werkzeug.exceptions import BadRequest
+
 from croniter import croniter
 from .base import db, Column, InsertObject, TimestampMixin
 from sqlalchemy import or_, and_, func
@@ -213,11 +215,49 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
         return get_tables_query.all()
 
     @classmethod
-    def upsert(cls,
-               input_data
-               ):
+    def upsert(cls, input_data, auto_commit=True):
         """
+        对应接口
+        :param input_data:
+        :return:
+        """
+        if "id" not in input_data:
+            try:
+                table_info = cls.create(auto_commit=auto_commit, **input_data)
+            except Exception as e:
+                raise BadRequest("table info insert error: %s" % e)
+        else:
+            table_info = cls.get_tables(table_id=input_data["id"])[0]
 
+            if "table_name_alias" in input_data and input_data["table_name_alias"] is not None:
+                table_info.table_name_alias = input_data["table_name_alias"]
+
+            if "table_extract_col" in input_data and input_data["table_extract_col"] is not None:
+                table_info.table_extract_col = input_data["table_extract_col"]
+
+            if "crontab_str" in input_data and input_data["crontab_str"] is not None:
+                table_info.crontab_str = input_data["crontab_str"]
+                crontab_iter = croniter(input_data["crontab_str"], get_now())
+                table_info.crontab_last_ts = crontab_iter.get_next(datetime.datetime)
+
+            if "update_crontab_last_ts" in input_data and input_data["update_crontab_last_ts"] is True:
+                crontab_iter = croniter(table_info.crontab_str, get_now())
+                table_info.crontab_last_ts = crontab_iter.get_next(datetime.datetime)
+
+            if auto_commit:
+                db.session.commit()
+            else:
+                db.session.flush()
+
+        return table_info
+
+
+    @classmethod
+    def upsert_bulk(cls,
+                    input_data
+                    ):
+        """
+        对完整数据的批量upsert
         :param input_data:
         [{connection_id:1,
         table_name:xxx,
@@ -325,7 +365,44 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
         return meta_query.order_by(cls.column_position).all()
 
     @classmethod
-    def upsert(cls, input_data):
+    def upsert(cls, input_data, auto_commit=True):
+        """
+        对应接口
+        :param input_data:
+        :return:
+        """
+        if "id" not in input_data:
+            try:
+                table_detail = cls.create(auto_commit=auto_commit, **input_data)
+            except Exception as e:
+                raise BadRequest("table detail insert error: %s" % e)
+        else:
+            table_detail = cls.get_tables(table_id=input_data["id"])[0]
+
+            if "column_type" in input_data and input_data["column_type"] is not None:
+                table_detail.column_type = input_data["column_type"]
+
+            if "column_type_length" in input_data and input_data["column_type_length"] is not None:
+                table_detail.column_type_length = input_data["column_type_length"]
+
+            if "column_comment" in input_data and input_data["column_comment"] is not None:
+                table_detail.column_comment = input_data["column_comment"]
+
+            if "is_extract" in input_data and input_data["is_extract"] is not None:
+                table_detail.is_extract = input_data["is_extract"]
+
+            if "is_primary" in input_data and input_data["is_primary"] is not None:
+                table_detail.is_primary = input_data["is_primary"]
+
+            if auto_commit:
+                db.session.commit()
+            else:
+                db.session.flush()
+
+        return table_detail
+
+    @classmethod
+    def upsert_bulk(cls, input_data):
 
         if isinstance(input_data, dict):
             input_data = [input_data]

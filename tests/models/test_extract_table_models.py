@@ -40,7 +40,7 @@ class TestDataExtract(BaseTestCase):
                       "column_position": len(column_info) + 1,
                       "is_extract": True,
                       "is_primary": False}
-        result = models.TableDetail.upsert(new_column)
+        result = models.TableDetail.upsert_bulk(new_column)
         TableOperate.alter_table(table_info=table_info)
 
     def test_2_alter_table_drop_column(self):

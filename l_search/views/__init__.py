@@ -52,6 +52,7 @@ api_meta.add_resource(SyncMeta, "/sync", endpoint="sync_meta")
 
 api_meta.add_resource(TableInfo,
                       "/<int:connection_id>/tables/info",
+                      "/<int:connection_id>/<table_id>/info",
                       "/<int:connection_id>/<table_name>/info",
                       endpoint="get_tables",
                       methods=["GET"])

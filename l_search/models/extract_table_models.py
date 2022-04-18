@@ -58,7 +58,7 @@ class TableOperate:
         return table_name
 
     @classmethod
-    def create_table(cls, table_info, is_stag=False, is_commit=True):
+    def create_table(cls, table_info, is_stag=False, is_commit=True, just_primary=False):
         """
         创建表
         :param table_info: object TableInfo query result
@@ -68,11 +68,16 @@ class TableOperate:
         table_name = cls.get_real_table_name(table_name=table_info.entity_table_name(), is_stag=is_stag)
         logger.info("table %s start create" % table_name)
 
-        table_detail = models.TableDetail.get_table_detail(table_info=table_info,
-                                                           is_extract=True,
-                                                           is_system_col=True)
+        if just_primary is True:
+            table_detail = models.TableDetail.get_table_detail(table_info=table_info,
+                                                               table_primary=True)
+        else:
+            table_detail = models.TableDetail.get_table_detail(table_info=table_info,
+                                                               is_extract=True,
+                                                               is_system_col=True)
 
-        create_stat = """create table if not exists %(table_name)s (
+        create_stat = """
+        create table if not exists %(table_name)s (
         
         """
         column_stat = """%(column_name)s %(column_type)s%(column_length)s,
@@ -120,7 +125,8 @@ class TableOperate:
             logger.info("table %s start sql: %s" % (table_name, create_table_sql))
             db.session.execute(create_table_sql)
 
-            table_info.is_entity = True
+            if is_stag is False and just_primary is False and table_info.is_entity is not True:
+                table_info.is_entity = True
 
             if is_commit:
                 db.session.commit()
@@ -215,7 +221,8 @@ class TableOperate:
         logger.info("Table %s start insert with value" % table_name)
         # """INSERT INTO full_text_index (id, extract_data_info_id, block_name, block_key, row_content) VALUES (:id, :extract_data_info_id, :block_name, :block_key, :row_content)"""
 
-        insert_stat = """insert into %(table_name)s (%(columns)s) values (%(values)s)""" % {
+        insert_stat = """
+        insert into %(table_name)s (%(columns)s) values (%(values)s)""" % {
             "table_name": table_name,
             "columns": "`" + "`,`".join(columns_in_order) + "`",
             "values": ":" + ", :".join(columns_in_order)
@@ -272,7 +279,8 @@ class TableOperate:
         update_stmt = """
         UPDATE %(ods_table_name)s m set %(period)s = tsrange(lower(m.%(period)s)::timestamp, '%(upper_datetime)s'::timestamp, '[]') 
         from %(stag_table_name)s stag
-        where %(m_primary_col_name)s = %(stag_primary_col_name)s""" % {
+        where %(m_primary_col_name)s = %(stag_primary_col_name)s
+        and %(period)s @> '%(upper_datetime)s'::timestamp""" % {
             "ods_table_name": cls.get_real_table_name(table_name=table_name, is_stag=False),
             "stag_table_name": cls.get_real_table_name(table_name=table_name, is_stag=True),
             "period": settings.PERIOD_COLUMN_NAME,
@@ -299,6 +307,7 @@ class TableOperate:
                 from %(ods_table_name)s m
                 left join %(stag_table_name)s stag on %(m_primary_col_name)s = %(stag_primary_col_name)s
                 where %(stag_primary_col_name)s is null
+                and %(period)s @> '%(upper_datetime)s'::timestamp
             )""" % {
             "ods_table_name": cls.get_real_table_name(table_name=table_name, is_stag=False),
             "stag_table_name": cls.get_real_table_name(table_name=table_name, is_stag=True),

@@ -38,10 +38,15 @@ def drop_ods_schema():
 
 class InsertObject:
     @classmethod
-    def create(cls, **kwargs):
+    def create(cls, auto_commit=True, **kwargs):
         new = cls(**kwargs)
         db.session.add(new)
-        db.session.commit()
+
+        if auto_commit:
+            db.session.commit()
+        else:
+            db.session.flush()
+
         return new
 
     @classmethod

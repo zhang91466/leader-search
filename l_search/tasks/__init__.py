@@ -81,7 +81,7 @@ def schedule_main():
     from l_search import redis_connection
     from croniter import croniter
     from l_search.utils import get_now, datetime, pytz
-    from l_search.handlers.data_extract_batch import get_table_by_crontab
+    from l_search.handlers.meta_operation import Meta
     from l_search import models
 
     scheduler_main_time_name = "l_search_scheduler_main_time"
@@ -103,14 +103,16 @@ def schedule_main():
         logger.info("Meta sync start")
         all_connection_infos = models.DBConnect.get_by_domain()
         for c_info in all_connection_infos:
-            celery_sync_table_meta.delay(connection_id=c_info["id"])
+            celery_sync_table_meta.delay(connection_id=c_info.id)
 
         redis_connection.set(scheduler_main_time_name, get_now(is_str=True))
         logger.info("Meta sync end")
 
     # extract data
-    need_execute_tables = get_table_by_crontab()
+    need_execute_tables = Meta.get_table_by_crontab()
     if len(need_execute_tables) > 0:
         logger.info("Table data extract start: %s" % str(need_execute_tables))
-        celery_extract_data_from_source.delay(table_id_list=need_execute_tables)
+        celery_extract_data_from_source.delay(connection_info_list=None,
+                                              table_id_list=need_execute_tables,
+                                              is_full=False)
         logger.info("Table data extract end")

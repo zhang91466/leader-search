@@ -124,9 +124,15 @@ class DataExtractLoad:
             现存的表不存在该主键id则代表源头已经删除了
         :return:
         """
-        get_primary = models.TableDetail.get_table_detail(table_info_id=self.table_info["id"],
+        get_primary = models.TableDetail.get_table_detail(table_info_id=self.table_info.id,
                                                           table_primary=True)
         if len(get_primary) > 0 and self.check_row_count() is False:
+
+            TableOperate.drop_table(table_info=self.table_info, is_stag=True)
+            TableOperate.create_table(table_info=self.table_info,
+                                      just_primary=True,
+                                      is_stag=True)
+
             self.query_runner.extract_primary_id()
 
             now = get_now(is_str=True)
@@ -222,9 +228,9 @@ def extract_tables(connection_info_list=None, table_id_list=None, is_full=True):
                                                              "delete_count": delete_cnt,
                                                              "error_info": error_message}
                     # update crontab datetime
-                    if error_message is None and table_info["crontab_str"] == True:
-                        models.TableInfo.upsert(input_data={"id": table_info[id],
-                                                            "crontab_str": True})
+                    if error_message is None and table_info.crontab_str is not None:
+                        models.TableInfo.upsert(input_data={"id": table_info.id,
+                                                            "update_crontab_last_ts": True})
                 except Exception as e:
                     logger.error("extract_tables: %s" % e)
                 finally:
@@ -234,8 +240,3 @@ def extract_tables(connection_info_list=None, table_id_list=None, is_full=True):
                 JobLock.wait()
 
     return execute_result
-
-
-def get_table_by_crontab():
-    need_crontab_table_list = models.TableInfo.get_tables(need_crontab=True)
-    return [x[id] for x in need_crontab_table_list]

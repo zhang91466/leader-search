@@ -62,10 +62,9 @@ class ConnectionInfo(Resource):
 
 # fields.List(fields.Nested(meta_info_model))})
 table_info_schema = {
-    "id": fields.String(description="表ID", ),
+    "id": fields.String(description="表ID", required=True),
     "connection_id": fields.Integer(description="数据库连接ID"),
     "table_name": fields.String(description="表名"),
-    # 更新数据怎么规避必填项
     "table_name_alias": fields.String(description="表名别名 为抽取后sql读取数据时,使用的表名,避免重名"),
     "table_extract_col": fields.String(description="表用于抽取的列名"),
     "latest_extract_date": fields.String(description="记录最新的抽取时间"),
@@ -77,14 +76,17 @@ table_info_model = api_meta.model("table_info_schema", table_info_schema)
 class TableInfo(Resource):
 
     @api_meta.marshal_with(table_info_model)
-    def get(self, connection_id, table_name=None):
+    def get(self, connection_id, table_id=None, table_name=None):
         """
         已收集的目标库表信息获取
         :param connection_id:
+        :param table_id:
         :param table_name:
         :return:
         """
-        get_result = Meta.get_table_info(connection_id=connection_id, table_name=table_name)
+        get_result = Meta.get_table_info(connection_id=connection_id,
+                                         table_id=table_id,
+                                         table_name=table_name)
         return_data = marshal(get_result, table_info_model)
         return return_data, 200
 
