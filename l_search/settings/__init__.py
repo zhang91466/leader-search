@@ -46,6 +46,8 @@ ODS_SCHEMA_NAME = "ods"
 
 ODS_STAG_SCHEMA_NAME = "ods_stag"
 
+SYNC_META_CRONTAB = "*/20 * * * *"
+
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 DATA_EXTRACT_CHUNK_SIZE = int(os.environ.get("EXTRACT_CHUNK_SIZE", 100000))
@@ -75,7 +77,7 @@ SOURCE_DB_CONNECTION_URL = {DBObjectType("greenplum").value: {"connect_prefix": 
                                                           "remark": ""},
                             }
 
-GEO_CRS_CODE = int(os.environ.get("GEO_CRS_CODE", 4326))
+GEO_CRS_CODE = int(os.environ.get("GEO_CRS_CODE", 4549))
 
 SWITCH_DIFF_DB_COLUMN_TYPE_ACCORDING_PG = {"varchar": ["varchar", "char", "nvarchar"],
                                            "integer": ["int", "smallint", "integer", "bigint"],

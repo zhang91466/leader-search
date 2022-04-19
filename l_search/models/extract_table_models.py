@@ -280,7 +280,7 @@ class TableOperate:
         UPDATE %(ods_table_name)s m set %(period)s = tsrange(lower(m.%(period)s)::timestamp, '%(upper_datetime)s'::timestamp, '[]') 
         from %(stag_table_name)s stag
         where %(m_primary_col_name)s = %(stag_primary_col_name)s
-        and %(period)s @> '%(upper_datetime)s'::timestamp""" % {
+        and m.%(period)s @> '%(upper_datetime)s'::timestamp""" % {
             "ods_table_name": cls.get_real_table_name(table_name=table_name, is_stag=False),
             "stag_table_name": cls.get_real_table_name(table_name=table_name, is_stag=True),
             "period": settings.PERIOD_COLUMN_NAME,
@@ -307,7 +307,7 @@ class TableOperate:
                 from %(ods_table_name)s m
                 left join %(stag_table_name)s stag on %(m_primary_col_name)s = %(stag_primary_col_name)s
                 where %(stag_primary_col_name)s is null
-                and %(period)s @> '%(upper_datetime)s'::timestamp
+                and m.%(period)s @> '%(upper_datetime)s'::timestamp
             )""" % {
             "ods_table_name": cls.get_real_table_name(table_name=table_name, is_stag=False),
             "stag_table_name": cls.get_real_table_name(table_name=table_name, is_stag=True),

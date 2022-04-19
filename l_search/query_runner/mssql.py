@@ -12,6 +12,7 @@ import pandas as pd
 from shapely.wkt import loads
 from werkzeug.exceptions import BadRequest
 from l_search.utils.logger import Logger
+from datetime import datetime
 
 logger = Logger()
 
@@ -22,7 +23,7 @@ class Mssql(BasicQueryRunner):
         if self.table_info.latest_extract_date is not None:
             where_stmt = " where %(update_ts_col)s > '%(latest_update_ts)s'" % {
                 "update_ts_col": self.table_info.table_extract_col,
-                "latest_update_ts": self.table_info.latest_extract_date}
+                "latest_update_ts": self.table_info.latest_extract_date.strftime("%Y-%m-%d %H:%M:%S")}
         else:
             where_stmt = ""
 

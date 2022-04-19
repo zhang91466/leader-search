@@ -92,9 +92,7 @@ class MetaDetector:
         :param table_object: sqlalchemy table model
         :return:
         """
-        result = {"table_name": table_object.name,
-                  "has_been_dropped": False,
-                  "dropped_time": None
+        result = {"table_name": table_object.name
                   }
         columns_info_list = []
         i = 1
@@ -126,7 +124,7 @@ class MetaDetector:
         :param table_name_prefix: 表名前缀里面有
         :return:
         """
-
+        logger.info("Detector schema start")
         table_detail_info = []
         list_tables = self.source_meta_data.tables
 

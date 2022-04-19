@@ -251,7 +251,6 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
 
         return table_info
 
-
     @classmethod
     def upsert_bulk(cls,
                     input_data
@@ -280,7 +279,17 @@ class TableInfo(db.Model, InsertObject, TimestampMixin):
                     d["crontab_last_ts"] = crontab_iter.get_next(datetime.datetime)
 
         execute_result = cls.upsert_base(input_data=input_data,
-                                         col_not_in=[cls.id.key, cls.created_at.key],
+                                         col_not_in=[cls.id.key,
+                                                     cls.created_at.key,
+                                                     cls.table_name_alias.key,
+                                                     cls.is_entity.key,
+                                                     cls.table_extract_col.key,
+                                                     cls.latest_extract_date.key,
+                                                     cls.has_been_dropped.key,
+                                                     cls.dropped_time.key,
+                                                     cls.crontab_str.key,
+                                                     cls.crontab_last_ts.key
+                                                     ],
                                          update_index=[cls.connection_id, cls.table_name])
         return execute_result
 
@@ -323,6 +332,7 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
 
     @classmethod
     def get_table_detail(cls,
+                         column_id=None,
                          table_info_id=None,
                          table_info=None,
                          column_name=None,
@@ -333,6 +343,9 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
                          select_geo=None
                          ):
         meta_query = cls.query
+
+        if column_id is not None:
+            meta_query = meta_query.filter(cls.id == column_id)
 
         if table_info_id is not None:
             meta_query = meta_query.filter(cls.table_info_id == table_info_id)
@@ -377,16 +390,16 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
             except Exception as e:
                 raise BadRequest("table detail insert error: %s" % e)
         else:
-            table_detail = cls.get_tables(table_id=input_data["id"])[0]
+            table_detail = cls.get_table_detail(column_id=input_data["id"])[0]
 
-            if "column_type" in input_data and input_data["column_type"] is not None:
-                table_detail.column_type = input_data["column_type"]
-
-            if "column_type_length" in input_data and input_data["column_type_length"] is not None:
-                table_detail.column_type_length = input_data["column_type_length"]
-
-            if "column_comment" in input_data and input_data["column_comment"] is not None:
-                table_detail.column_comment = input_data["column_comment"]
+            # if "column_type" in input_data and input_data["column_type"] is not None:
+            #     table_detail.column_type = input_data["column_type"]
+            #
+            # if "column_type_length" in input_data and input_data["column_type_length"] is not None:
+            #     table_detail.column_type_length = input_data["column_type_length"]
+            #
+            # if "column_comment" in input_data and input_data["column_comment"] is not None:
+            #     table_detail.column_comment = input_data["column_comment"]
 
             if "is_extract" in input_data and input_data["is_extract"] is not None:
                 table_detail.is_extract = input_data["is_extract"]
@@ -411,6 +424,17 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
             if "id" in d and d["id"] is None:
                 d.pop("id")
 
+        execute_result = cls.upsert_base(input_data=input_data,
+                                         col_not_in=[cls.id.key,
+                                                     cls.created_at.key,
+                                                     cls.is_extract.key,
+                                                     cls.is_primary.key,
+                                                     cls.is_entity.key,
+                                                     cls.is_system_col.key],
+                                         update_index=[cls.table_info_id, cls.column_name],
+                                         is_commit=True)
+
+        # 确保period列的存在
         period_column = {"table_info_id": input_data[0]["table_info_id"],
                          "column_name": settings.PERIOD_COLUMN_NAME,
                          "column_type": "tsrange",
@@ -426,12 +450,7 @@ class TableDetail(db.Model, InsertObject, TimestampMixin):
             # 添加时态列, 一般是表第一次创建的时候 需要添加这个列
             max_index = len(input_data) + 1
             period_column["column_position"] = max_index
-            input_data.append(period_column)
-
-        execute_result = cls.upsert_base(input_data=input_data,
-                                         col_not_in=[cls.id.key, cls.created_at.key],
-                                         update_index=[cls.table_info_id, cls.column_name],
-                                         is_commit=True)
+            cls.upsert(input_data=period_column)
 
         return execute_result
 

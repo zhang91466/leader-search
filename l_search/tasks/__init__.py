@@ -79,33 +79,44 @@ def celery_select_entity_table(execute_sql, connection_id):
 @celery.task(time_limit=settings.CELERY_TASK_FORCE_EXPIRE_SECOND)
 def schedule_main():
     from l_search import redis_connection
-    from croniter import croniter
     from l_search.utils import get_now, datetime, pytz
     from l_search.handlers.meta_operation import Meta
     from l_search import models
+    from l_search.tasks.monitor import JobLock
 
-    scheduler_main_time_name = "l_search_scheduler_main_time"
+    from croniter import croniter
+    from time import mktime
+
+    scheduler_main_time_name = JobLock.set_job_name("scheduler_sync_meta_benchmark_time")
+    current_time = get_now()
+
+    def set_sync_meta_to_redis():
+        meta_sync_crontab = croniter(settings.SYNC_META_CRONTAB, current_time)
+        next_crontab = meta_sync_crontab.get_next(datetime.datetime)
+        next_crontab_str = next_crontab.strftime("%Y-%m-%d %H:%M:%S")
+        logger.info("Meta sync next time %s" % next_crontab_str)
+        redis_connection.set(scheduler_main_time_name, next_crontab_str)
+        redis_connection.expire(scheduler_main_time_name, 3 * 24 * 3600)
+        return next_crontab_str
+
     scheduler_main_time_str = redis_connection.get(scheduler_main_time_name)
     if scheduler_main_time_str is None:
-        scheduler_main_time_str = get_now(is_str=True)
-        redis_connection.set(scheduler_main_time_name, scheduler_main_time_str)
+        scheduler_main_time_str = set_sync_meta_to_redis()
     else:
         scheduler_main_time_str = scheduler_main_time_str.decode("utf8")
 
-    scheduler_main_time = datetime.datetime.strptime(scheduler_main_time_str, "%Y-%m-%d %H:%M:%S").replace(
-        tzinfo=pytz.timezone(settings.TIMEZONE))
-
-    logger.info("Meta sync latest time %s" % scheduler_main_time_str)
+    scheduler_main_time_unix = mktime(datetime.datetime.strptime(scheduler_main_time_str, "%Y-%m-%d %H:%M:%S").timetuple())
+    current_time_unix = mktime(current_time.timetuple())
+    logger.info("Meta sync latest time %s" % str(scheduler_main_time_unix))
+    logger.info("Meta sync current time %s" % str(current_time_unix))
     # sync meta
-    meta_sync_crontab = croniter("41 2 * * *", scheduler_main_time)
 
-    if get_now() >= meta_sync_crontab.get_next(datetime.datetime):
+    if current_time_unix > scheduler_main_time_unix:
         logger.info("Meta sync start")
-        all_connection_infos = models.DBConnect.get_by_domain()
-        for c_info in all_connection_infos:
+        connections = models.DBConnect.get_by_domain()
+        for c_info in connections:
             celery_sync_table_meta.delay(connection_id=c_info.id)
-
-        redis_connection.set(scheduler_main_time_name, get_now(is_str=True))
+        set_sync_meta_to_redis()
         logger.info("Meta sync end")
 
     # extract data

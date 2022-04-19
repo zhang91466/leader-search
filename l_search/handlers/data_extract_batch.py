@@ -127,7 +127,6 @@ class DataExtractLoad:
         get_primary = models.TableDetail.get_table_detail(table_info_id=self.table_info.id,
                                                           table_primary=True)
         if len(get_primary) > 0 and self.check_row_count() is False:
-
             TableOperate.drop_table(table_info=self.table_info, is_stag=True)
             TableOperate.create_table(table_info=self.table_info,
                                       just_primary=True,
@@ -215,7 +214,9 @@ def extract_tables(connection_info_list=None, table_id_list=None, is_full=True):
                     if is_full is True:
                         increment = False
                     else:
-                        if table_info.latest_extract_date is not None:
+                        check_primary = models.TableDetail.get_table_detail(table_info=table_info,
+                                                                            table_primary=True)
+                        if table_info.latest_extract_date is not None and len(check_primary) > 0:
                             increment = True
                         else:
                             increment = False

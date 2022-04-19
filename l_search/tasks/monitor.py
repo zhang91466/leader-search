@@ -14,20 +14,20 @@ import time
 logger = Logger()
 
 class JobLock:
-    LOCK_NAME = "Lock_&_%s"
+    LOCK_NAME = "L_SEARCH_&_%s"
 
     @classmethod
     def set_job_name(cls, job_name):
         return cls.LOCK_NAME % job_name
 
     @classmethod
-    def set_job_lock(cls, job_name):
+    def set_job_lock(cls, job_name, expire_time=settings.CELERY_TASK_FORCE_EXPIRE_SECOND):
         job_name = cls.set_job_name(job_name=job_name)
         last_time = redis_connection.get(job_name)
 
         if last_time is None:
             redis_connection.set(job_name, get_now(is_str=True))
-            redis_connection.expire(job_name, settings.CELERY_TASK_FORCE_EXPIRE_SECOND)
+            redis_connection.expire(job_name, expire_time)
             return True
         else:
             return False
