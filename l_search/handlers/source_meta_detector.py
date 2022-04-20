@@ -11,7 +11,6 @@ from l_search.models.extract_table_models import DBSession
 from l_search.utils.logger import Logger
 from l_search.query_runner import get_query_runner
 
-
 logger = Logger()
 
 
@@ -58,14 +57,19 @@ class MetaDetector:
 
             # check geo z
             check_geo_z_stat = self.query_runner.get_check_geo_z_stat(geo_col=column_data.name,
-                                                   table_name=table_name)
+                                                                      table_name=table_name)
+            if check_geo_z_stat is not None:
+                try:
+                    one_row = self.session.execute(check_geo_z_stat).first()
+                except Exception as e:
+                    logger.error("Check geo z error: %s" % e)
+                    one_row = None
 
-            one_row = self.session.execute(check_geo_z_stat).first()
-            if one_row:
-                from shapely.wkt import loads
-                one_row_geo_load = loads(one_row[settings.GEO_COLUMN_NAME_STAG])
-                if one_row_geo_load.has_z:
-                    column_type = "geometryZ"
+                if one_row:
+                    from shapely.wkt import loads
+                    one_row_geo_load = loads(one_row[settings.GEO_COLUMN_NAME_STAG])
+                    if one_row_geo_load.has_z:
+                        column_type = "geometryZ"
 
         else:
             if not isinstance(column_data.type, NullType):

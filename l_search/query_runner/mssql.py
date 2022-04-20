@@ -10,24 +10,12 @@ from l_search.query_runner import register
 import geopandas as gpd
 import pandas as pd
 from shapely.wkt import loads
-from werkzeug.exceptions import BadRequest
 from l_search.utils.logger import Logger
-from datetime import datetime
 
 logger = Logger()
 
 
 class Mssql(BasicQueryRunner):
-
-    def increment_where_stmt(self):
-        if self.table_info.latest_extract_date is not None:
-            where_stmt = " where %(update_ts_col)s > '%(latest_update_ts)s'" % {
-                "update_ts_col": self.table_info.table_extract_col,
-                "latest_update_ts": self.table_info.latest_extract_date.strftime("%Y-%m-%d %H:%M:%S")}
-        else:
-            where_stmt = ""
-
-        return where_stmt
 
     @staticmethod
     def geo_col_to_str(geo_col):
@@ -41,6 +29,7 @@ class Mssql(BasicQueryRunner):
                                                                                 "col_no_as": geo_str.split("as")[0]}
 
     def extract(self, increment=True):
+        logger.info("Mssql: extracting")
         table_name = self.table_info.entity_table_name()
         logger.info("%s start extract" % table_name)
 
@@ -97,7 +86,7 @@ class Mssql(BasicQueryRunner):
                 else:
                     partial_df.to_sql(**to_db_para)
 
-            logger.debug("%s extract end" % table_name)
+            logger.info("%s extract end" % table_name)
         except Exception as e:
             error_message = "%s extract failed. Error Info: %s" % (table_name, e)
             logger.error(error_message)

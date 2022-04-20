@@ -82,6 +82,16 @@ class BasicQueryRunner:
 
         return table_name
 
+    def increment_where_stmt(self):
+        if self.table_info.latest_extract_date is not None:
+            where_stmt = " where %(update_ts_col)s > '%(latest_update_ts)s'" % {
+                "update_ts_col": self.table_info.table_extract_col,
+                "latest_update_ts": self.table_info.latest_extract_date.strftime("%Y-%m-%d %H:%M:%S")}
+        else:
+            where_stmt = ""
+
+        return where_stmt
+
     def df_structure_arrangement(self, insert_data_df):
         """
         when df column all value is nan, then column type is chaotic
@@ -146,11 +156,58 @@ class BasicQueryRunner:
                 col_str += "%(geo_col)s,"
             else:
                 col_str += "%s," % column_name
-        # Todo 记得删除limit
-        select_stmt = "select top 100 %(col_str)s from %(table_name)s" % {"col_str": col_str[:-1],
-                                                                          "table_name": self.table_name()}
+
+        select_stmt = "select %(col_str)s from %(table_name)s" % {"col_str": col_str[:-1],
+                                                                  "table_name": self.table_name()}
 
         return select_stmt, geo_col
+
+    def get_check_geo_z_stat(self, geo_col, table_name):
+        return None
+
+    def extract(self, increment=True):
+        """
+        通用方法不支持geo数据的抽取
+        :param increment:
+        :return:
+        """
+        table_name = self.table_info.entity_table_name()
+        logger.info("%s start extract" % table_name)
+
+        extract_stmt, geo_col = self.select_stmt()
+
+        if geo_col is None:
+
+            if increment is True:
+                extract_stmt = extract_stmt + self.increment_where_stmt()
+
+            logger.info("%s extract stmt %s" % (table_name, extract_stmt))
+
+            try:
+                for count, partial_df in enumerate(
+                        pd.read_sql(extract_stmt, self.source_db_engine, chunksize=self.chunk_size)):
+
+                    if len(partial_df) == 0:
+                        # 没有数据直接退出
+                        break
+
+                    to_db_para = {"con": self.db_engine,
+                                  "if_exists": "append",
+                                  "schema": settings.ODS_STAG_SCHEMA_NAME,
+                                  "name": table_name,
+                                  "index": False}
+
+                    logger.info("%s extracting loop %d" % (table_name, count))
+
+                    partial_df = self.df_structure_arrangement(insert_data_df=partial_df)
+
+                    partial_df.to_sql(**to_db_para)
+
+                logger.info("%s extract end" % table_name)
+            except Exception as e:
+                error_message = "%s extract failed. Error Info: %s" % (table_name, e)
+                logger.error(error_message)
+                return error_message
 
     def row_count(self):
         count_stmt = "select count(*) as row_cnt from %s" % self.table_name()
@@ -170,7 +227,6 @@ class BasicQueryRunner:
         try:
             for count, partial_df in enumerate(
                     pd.read_sql(select_stmt, self.source_db_engine, chunksize=self.chunk_size)):
-
                 logger.info("%s extracting loop %d" % (self.table_info.table_name, count))
 
                 partial_df.to_sql(con=self.db_engine,
