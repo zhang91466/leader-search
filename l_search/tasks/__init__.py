@@ -51,7 +51,7 @@ def celery_extract_data_from_source(connection_info_list, table_id_list, is_full
 
 
 @celery.task(time_limit=settings.CELERY_TASK_FORCE_EXPIRE_SECOND)
-def celery_select_entity_table(execute_sql, connection_id):
+def celery_select_entity_table(execute_sql, connection_id, period_time):
     from l_search.models.extract_table_models import TableOperate
     import hashlib
 
@@ -60,15 +60,15 @@ def celery_select_entity_table(execute_sql, connection_id):
 
     while True:
 
-        if JobLock.set_job_lock(job_name=job_lock_name):
+        if JobLock.set_job_lock(job_name=job_lock_name,
+                                expire_time=10*60):
 
             try:
                 select_return_data = TableOperate.select(sql=execute_sql,
-                                                         connection_id=connection_id)
+                                                         connection_id=connection_id,
+                                                         period_time=period_time)
                 JobLock.del_job_lock(job_name=job_lock_name)
                 select_return_data = {"select_data": json_dumps(select_return_data)}
-            except Exception as e:
-                logger.error("celery_sync_table_meta: %s" % e)
             finally:
                 JobLock.del_job_lock(job_name=job_lock_name)
                 return select_return_data

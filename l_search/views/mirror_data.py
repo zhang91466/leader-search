@@ -5,6 +5,7 @@
 @file:mirror_data
 """
 from flask_restx import Namespace, Resource, fields, marshal
+from datetime import datetime
 from l_search.tasks import (celery_extract_data_from_source,
                             celery_select_entity_table)
 
@@ -41,9 +42,15 @@ class ExtractAndLoad(Resource):
         # return {"etl_success_row_count": insert_success}, 200
 
 
+class BasicDateFormat(fields.Raw):
+    def format(self, value):
+        return datetime.strptime(value, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d %H:%M")
+
+
 extract_data_select_schema = {
     "sql": fields.String(description="需要执行的sql"),
-    "connection_id": fields.List(fields.Integer(description="sql中表对应的连接id组合,同名不在连接id内的表会被排除"), default=[])
+    "connection_id": fields.List(fields.Integer(description="sql中表对应的连接id组合,同名不在连接id内的表会被排除"), default=[]),
+    "period_time": BasicDateFormat(description="按时态查询数据 格式%Y-%m-%d %H:%M:%S")
 }
 
 extract_data_select_model = api_mirror.model("extract_data_select_schema", extract_data_select_schema)
@@ -60,8 +67,10 @@ class ExtractDataSelect(Resource):
 
         request_data = marshal(api_mirror.payload, extract_data_select_model)
         task = celery_select_entity_table.delay(execute_sql=request_data["sql"],
-                                                connection_id=request_data["connection_id"])
-        # select_return_data = celery_select_entity_table(execute_sql=request_data["sql"],
-        #                                          connection_id=request_data["connection_id"])
-        # return select_return_data, 200
+                                                connection_id=request_data["connection_id"],
+                                                period_time=request_data["period_time"])
         return {"task_id": task.id}, 200
+        # select_return_data = celery_select_entity_table(execute_sql=request_data["sql"],
+        #                                                 connection_id=request_data["connection_id"],
+        #                                                 period_time=request_data["period_time"])
+        # return select_return_data, 200

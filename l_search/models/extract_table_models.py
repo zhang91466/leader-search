@@ -13,6 +13,7 @@ from l_search import models
 from l_search import settings
 from l_search.models.base import db
 from l_search.utils.logger import Logger
+from l_search.utils import get_now
 
 DONOT_CREATE_COLUMN = []
 
@@ -341,12 +342,20 @@ class TableOperate:
         cls.db_commit(is_commit=is_commit)
 
     @classmethod
-    def select(cls, sql, connection_id=None):
-
+    def select(cls, sql, period_time=None, connection_id=None):
+        """
+        判断sql中是否包含了除select之外的语句,避免sql注入
+        解析sql
+        获取sql中的表命,确保表都已经被采集,然后添加时态信息
+        :param sql:
+        :param period_time:
+        :param connection_id:
+        :return:
+        """
         logger.info("Start select by sql")
 
         sql = str(sql).lower()
-        black_key_words = ["insert", "update", "delete", "drop", "alter", "create", "truncate"]
+        black_key_words = ["insert", "update", "delete", "drop", "alter", "create", "truncate", "grant", "revoke "]
 
         # 避免sql注入导致数据的变更
         for black_key in black_key_words:
@@ -357,33 +366,62 @@ class TableOperate:
                 raise BadRequest(error_message)
 
         # 去除回车用空格替换
-        sql_list = [str(l).strip() for l in str(sql).splitlines()]
-        sql = " ".join(sql_list)
+        sql_lines_list = [str(l).strip() for l in str(sql).splitlines()]
+        sql = " ".join(sql_lines_list)
 
-        table_name_list = Parser(sql).tables
+        # 去除多个空格 只保留一个空格
+        sql_words_list = [w for w in str(sql).split(" ") if w != ""]
+        sql = " ".join(sql_words_list)
 
-        get_tables = models.TableInfo.get_tables(table_name_alias=table_name_list)
+        # 解析sql
+        sql = str(sql).lower()
+        explain_sql = Parser(sql)
+
+        tables_name_list = explain_sql.tables
+
+        # 判断表是否存在在元数据管理中
+        get_tables = models.TableInfo.get_tables(table_name_alias=tables_name_list)
 
         if connection_id is not None and len(connection_id) > 0:
             get_tables = [x for x in get_tables if x.connection_id in connection_id]
 
-        if len(table_name_list) == len(get_tables):
+        # 加时态
+        if len(tables_name_list) == len(get_tables):
+
+            if period_time is None:
+                period_time = get_now(is_str=True)
+
+            has_table_alias = []
+            for t_alias, t_name in explain_sql.tables_aliases.items():
+                if t_alias not in ["where", "left", "right", "inner", "full", "outer"]:
+                    has_table_alias.append(t_name)
+
             for i, table_info in enumerate(get_tables):
 
                 table_name = str(table_info.table_name_alias).lower()
-                table_alias = ""
-                # 为了避免用表命直接做别名，故需要在此处判断是否有表命后带点的情况 （select aa.b,aa.c from aa）
-                table_name_behind_with_point = "%s." % table_name
-                if table_name_behind_with_point in sql:
-                    table_alias = "T%d" % i
-                    sql = sql.replace(table_name_behind_with_point, "%s." % table_alias)
 
-                sql = sql.replace(table_name, "ods.%s %s" % (str(table_info.entity_table_name()).lower(), table_alias))
+                if table_name in has_table_alias:
+                    table_alias = ""
+                else:
+                    table_alias = "T00%d" % i
+
+                    # 为了避免用表命直接做别名，故需要在此处判断是否有表命后带点的情况 （select aa.b,aa.c from aa）
+                    table_name_behind_with_point = "%s." % table_name
+                    if table_name_behind_with_point in sql:
+                        sql = sql.replace(table_name_behind_with_point, "%s." % table_alias)
+
+                sql = sql.replace(table_name, """ 
+(select * from ods.%(table_name)s where %(period)s @> '%(period_time)s'::timestamp) %(alias)s""" % (
+                    {"table_name": str(table_info.entity_table_name()).lower(),
+                     "period": settings.PERIOD_COLUMN_NAME,
+                     "period_time": period_time,
+                     "alias": table_alias
+                     }))
 
         else:
             table_meta = [x.table_name for x in get_tables]
             error_message = "In the sql table(%s) of Connection %s are not found in metadata" % (
-                ",".join(list(set(table_name_list) - set(table_meta))),
+                ",".join(list(set(tables_name_list) - set(table_meta))),
                 str(connection_id))
             logger.warn(error_message)
             raise BadRequest(error_message)
@@ -393,11 +431,11 @@ class TableOperate:
             execute_data = db.session.execute(sql)
             return [dict(row) for row in execute_data]
         except Exception as e:
-            raise BadRequest("""Sql execute error. Execute sql:
+            return {"error": """"Sql execute error. Execute sql:
             %s
             Error info:
             %s
-            """ % (sql, e))
+            """ % (sql, e)}
 
     @classmethod
     def get_max_update_ts(cls, table_info, update_ts_col, is_stag=True):

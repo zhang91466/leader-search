@@ -76,6 +76,27 @@ services:
           limits:
             memory: 2G
 
+    celery_work_2:
+      build:
+        context: .
+        dockerfile: Dockerfile.main
+      depends_on:
+        - l_search
+      container_name: l_search-work-2
+      environment:
+        - LSEARCH_DB_CONNECT_URL=postgresql+psycopg2://postgres:123456xxx@db/l_search
+        - REDIS_URL=redis://redis/2
+        - LSEARCH_LOGGER_LEVEL=DEBUG
+        - EXTRACT_CHUNK_SIZE=50000
+        - GEO_CRS_CODE=4549
+        - LSEARCH_TIMEZONE=Asia/Shanghai
+      working_dir: /app
+      command: bash -c "celery -A l_search.celeryapp.celery_worker.celery worker --concurrency=3 -E"
+      deploy:
+        resources:
+          limits:
+            memory: 2G
+
     celery_beat:
       build:
         context: .
