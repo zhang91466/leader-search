@@ -12,7 +12,6 @@ from l_search.models.extract_table_models import DBSession
 
 from werkzeug.exceptions import BadRequest
 import pandas as pd
-from sqlalchemy.orm import Session
 
 logger = Logger()
 

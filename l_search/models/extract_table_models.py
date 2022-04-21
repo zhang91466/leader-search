@@ -309,7 +309,8 @@ class TableOperate:
                 left join %(stag_table_name)s stag on %(m_primary_col_name)s = %(stag_primary_col_name)s
                 where %(stag_primary_col_name)s is null
                 and m.%(period)s @> '%(upper_datetime)s'::timestamp
-            )""" % {
+            )
+            and %(period)s @> '%(upper_datetime)s'::timestamp""" % {
             "ods_table_name": cls.get_real_table_name(table_name=table_name, is_stag=False),
             "stag_table_name": cls.get_real_table_name(table_name=table_name, is_stag=True),
             "period": settings.PERIOD_COLUMN_NAME,

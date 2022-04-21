@@ -13,6 +13,8 @@ from l_search.utils import get_now
 from l_search.utils.logger import Logger
 from l_search.tasks.monitor import JobLock
 
+from datetime import timedelta
+
 from werkzeug.exceptions import BadRequest
 
 logger = Logger()
@@ -51,7 +53,9 @@ class DataExtractLoad:
         source_col_str = ""
         primary_column_name = None
 
-        now = get_now(is_str=True)
+        now = get_now()
+        now_str = now.strftime("%Y-%m-%d %H:%M:%S")
+        now_add_1_second_str = (now + timedelta(seconds=1)).strftime("%Y-%m-%d %H:%M:%S")
 
         for col in column_info_list:
 
@@ -63,7 +67,7 @@ class DataExtractLoad:
                 source_append_column_name = settings.GEO_COLUMN_NAME_STAG
 
             if col.column_name == settings.PERIOD_COLUMN_NAME:
-                source_append_column_name = """tsrange('%s'::timestamp,NULL, '[)')""" % now
+                source_append_column_name = """tsrange('%s'::timestamp,NULL, '[)')""" % now_add_1_second_str
 
             target_col_str += " %s," % target_append_column_name
             source_col_str += " %s," % source_append_column_name
@@ -71,7 +75,7 @@ class DataExtractLoad:
         if increment is True:
             # 通过primary id 更新 tsrange 把当前数据变为历史数据
             TableOperate.update_tsrange(table_info=self.table_info,
-                                        upper_datetime=now,
+                                        upper_datetime=now_str,
                                         is_commit=False
                                         )
         # 插入新数据

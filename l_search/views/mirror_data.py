@@ -42,9 +42,9 @@ class ExtractAndLoad(Resource):
         # return {"etl_success_row_count": insert_success}, 200
 
 
-class BasicDateFormat(fields.Raw):
+class BasicDateFormat(fields.String):
     def format(self, value):
-        return datetime.strptime(value, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d %H:%M")
+        return datetime.strptime(value, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d %H:%M:%S")
 
 
 extract_data_select_schema = {
