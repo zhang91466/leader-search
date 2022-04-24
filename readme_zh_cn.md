@@ -168,12 +168,6 @@ docker-compose --compatibility up -d
 
 ### 4. 数据获取
 
-已经抽取的数据，按时态存放如下
-
-![input_data_source](readme_file/Extract_data_time.png)
-
-
-
 **API**: [ POST ]   /entity/extract_and_load
 
 **Request Body**
@@ -194,7 +188,15 @@ docker-compose --compatibility up -d
 
 **案例：**
 
+已经抽取的数据，按时态存放如下
+
+![input_data_source](readme_file/Extract_data_time.png)
+
+
+
 SQL: select k_name,v_value,start_time from l_search_test where id in (131)
+
+
 
 获取最新的数据
 

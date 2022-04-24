@@ -162,12 +162,6 @@ table extract task monitor
 
 ### 4. Select data
 
-Data after loop extracted, will create temporal data.
-
-![input_data_source](readme_file/Extract_data_time.png)
-
-
-
 **API**: [ POST ]   /entity/extract_and_load
 
 **Request Body**
@@ -187,6 +181,12 @@ Data after loop extracted, will create temporal data.
 
 
 **Example:**
+
+Data after loop extracted, will create temporal data.
+
+![input_data_source](readme_file/Extract_data_time.png)
+
+
 
 SQL: select k_name,v_value,start_time from l_search_test where id in (131)
 
