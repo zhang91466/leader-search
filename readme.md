@@ -81,7 +81,7 @@ modify in docker-compose.yml
 | ✦ account    | String                     | Database login user                          |
 | ✦ pwd        | String                     | Database login password                      |
 
-![input_data_source](readme_file\input_data_source.png)
+![input_data_source](readme_file/input_data_source.png)
 
 
 
