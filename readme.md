@@ -1,6 +1,6 @@
 # Leader-Search
 
-
+[中文版](readme_zh_cn.md)
 
 leader-search is a lightweight tool that solves isolated data island; it is a distributed ETL platform which contain schedule and data store, provides SQL queries for stored data.
 
