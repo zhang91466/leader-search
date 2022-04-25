@@ -14,6 +14,7 @@ from l_search import settings
 from l_search.models.base import db
 from l_search.utils.logger import Logger
 from l_search.utils import get_now
+from l_search.models import DBObjectType
 
 DONOT_CREATE_COLUMN = []
 

@@ -83,8 +83,15 @@ class BaseTestCase(TestCase):
                 "{} not equal (expected: {}, actual: {}).".format(k, v, actual[k]),
             )
 
-    def table_init(self, geo_name="shape", increment_table=False):
-        query = self.factory.create_table_detail(geo_name=geo_name, increment_table=increment_table)
+    def table_init(self,
+                   db_type="mssql",
+                   has_geo=True,
+                   geo_name="shape",
+                   increment_table=False):
+        query = self.factory.create_table_detail(db_type=db_type,
+                                                 has_geo=has_geo,
+                                                 geo_name=geo_name,
+                                                 increment_table=increment_table)
         table_info = models.TableInfo.get_tables(table_id=query[0]["table_info_id"])
         TableOperate.drop_table(table_info=table_info[0], is_stag=False, is_commit=False)
         TableOperate.create_table(table_info=table_info[0],

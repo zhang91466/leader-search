@@ -9,6 +9,10 @@ from l_search.models import db
 from l_search import models
 import pandas as pd
 from l_search import settings
+import os
+
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+PICKLE_PATH = os.path.join(ROOT_DIR, "./mock_data/geo_mock_data.pkl")
 
 
 class ModelFactory:
@@ -45,7 +49,7 @@ mssql_connection_factory = ModelFactory(
     default_db="LM_XS_ARC_WATER"
 )
 
-db_connection_factory = ModelFactory(
+mysql_connection_factory = ModelFactory(
     model=models.DBConnect,
     domain="l_search_test",
     db_type="mysql",
@@ -53,18 +57,29 @@ db_connection_factory = ModelFactory(
     port="7601",
     account="root",
     pwd="leadmap1102",
-    default_db="operation"
+    default_db="test"
+)
+
+pg_connection_factory = ModelFactory(
+    model=models.DBConnect,
+    domain="l_search_test",
+    db_type="postgresql",
+    host="192.168.1.55",
+    port="5432",
+    account="postgres",
+    pwd="123456xxx",
+    default_db="l_search"
 )
 
 db_table_info_factory = ModelFactory(
     model=models.TableInfo,
-    table_name="L_FLOWPIPE"
+    table_name="l_flowpipe"
 )
 
 db_table_info_increment_factory = ModelFactory(
     model=models.TableInfo,
-    table_name="L_FLOWPIPE",
-    table_extract_col="UPDATETIME"
+    table_name="l_flowpipe",
+    table_extract_col="updatetime"
 )
 
 db_table_detail_dict = [
@@ -75,8 +90,6 @@ db_table_detail_dict = [
     {"column_name": "CLASSCODE", "column_type": "integer", "column_type_length": "", "column_position": 7,
      "is_extract": True, "is_primary": False},
     {"column_name": "LOCALITYROAD", "column_type": "nvarchar", "column_type_length": "50", "column_position": 8,
-     "is_extract": True, "is_primary": False},
-    {"column_name": "DEVICESTATE", "column_type": "nvarchar", "column_type_length": "50", "column_position": 10,
      "is_extract": True, "is_primary": False},
     {"column_name": "FINISHDATE", "column_type": "datetime2", "column_type_length": "", "column_position": 15,
      "is_extract": True, "is_primary": False},
@@ -108,8 +121,14 @@ class Factory:
             result_data = create_data
         return result_data
 
-    def create_table_info(self, increment_table=False):
-        create_connection = mssql_connection_factory.create()
+    def create_table_info(self, increment_table=False, db_type="mssql"):
+        if db_type == "mssql":
+            create_connection = mssql_connection_factory.create()
+        elif db_type == "mysql":
+            create_connection = mysql_connection_factory.create()
+        elif db_type == "postgresql":
+            create_connection = pg_connection_factory.create()
+
         if increment_table is True:
             table_info_data = db_table_info_increment_factory
         else:
@@ -126,21 +145,30 @@ class Factory:
                        }
         return result_data
 
-    def create_table_detail(self, column_info_list=None, geo_name="shape", increment_table=False):
+    def create_table_detail(self,
+                            db_type="mssql",
+                            column_info_list=None,
+                            has_geo=True,
+                            geo_name="shape",
+                            increment_table=False):
 
         if column_info_list is None:
             column_info_list = db_table_detail_dict
 
-            if geo_name == "shape":
-                column_info_list.append(
-                    {"column_name": "SHAPE", "column_type": "geometry", "column_type_length": "", "column_position": 54,
-                     "is_extract": True, "is_primary": False})
-            elif geo_name == "geometry":
-                column_info_list.append({"column_name": "geometry", "column_type": "geometry", "column_type_length": "",
-                                         "column_position": 54,
-                                         "is_extract": True, "is_primary": False})
+            if has_geo is True:
+                if geo_name == "shape":
+                    column_info_list.append(
+                        {"column_name": "SHAPE", "column_type": "geometry", "column_type_length": "",
+                         "column_position": 54,
+                         "is_extract": True, "is_primary": False})
+                elif geo_name == "geometry":
+                    column_info_list.append(
+                        {"column_name": "geometry", "column_type": "geometry", "column_type_length": "",
+                         "column_position": 54,
+                         "is_extract": True, "is_primary": False})
 
-        create_table_info = self.create_table_info(increment_table=increment_table)
+        create_table_info = self.create_table_info(increment_table=increment_table,
+                                                   db_type=db_type)
 
         result = []
 
@@ -170,10 +198,7 @@ class Factory:
         pickle里的数据结构和上面的数据结构保持统一
         :return:
         """
-        import os
-        ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-        pickle_path = os.path.join(ROOT_DIR, "./mock_data/geo_mock_data.pkl")
-        insert_data_df = pd.read_pickle(pickle_path)
+        insert_data_df = pd.read_pickle(PICKLE_PATH)
 
         table_schema = models.TableDetail.get_table_detail(table_info=table_info,
                                                            is_entity=True)
@@ -224,3 +249,19 @@ class Factory:
             schema=settings.ODS_STAG_SCHEMA_NAME
         )
         return insert_data_df.columns, len(insert_data_df.index)
+
+    def insert_mock_data_to_source_db(self, table_info):
+        from l_search.models.extract_table_models import DBSession
+
+        insert_data_df = pd.read_pickle(PICKLE_PATH)
+        insert_data_df = insert_data_df.drop(columns=["geometry"])
+
+        connection = DBSession(connection_info=table_info.connection)
+
+        insert_data_df.to_sql(
+            con=connection.engine,
+            name=str(table_info.table_name).lower(),
+            if_exists="replace",
+            index=False
+        )
+        return len(insert_data_df.index)
