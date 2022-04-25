@@ -70,7 +70,7 @@ db_table_info_increment_factory = ModelFactory(
 db_table_detail_dict = [
     {"column_name": "OBJECTID", "column_type": "integer", "column_type_length": "", "column_position": 1,
      "is_extract": True, "is_primary": True},
-    {"column_name": "PIPELENGTH", "column_type": "numeric", "column_type_length": "38, 8", "column_position": 4,
+    {"column_name": "PIPEDIAMETER", "column_type": "integer", "column_type_length": "", "column_position": 5,
      "is_extract": True, "is_primary": False},
     {"column_name": "CLASSCODE", "column_type": "integer", "column_type_length": "", "column_position": 7,
      "is_extract": True, "is_primary": False},
