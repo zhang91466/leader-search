@@ -107,27 +107,29 @@ db_table_detail_dict = [
 
 class Factory:
 
-    def create_db_connect(self, return_dict=True):
-        create_data = mssql_connection_factory.create()
-        if return_dict:
-            result_data = {"id": create_data.id,
-                           "domain": create_data.domain,
-                           "db_type": create_data.db_type,
-                           "host": create_data.host,
-                           "port": create_data.port,
-                           "account": create_data.account,
-                           "default_db": create_data.default_db}
-        else:
-            result_data = create_data
-        return result_data
-
-    def create_table_info(self, increment_table=False, db_type="mssql"):
+    def create_db_connect(self, return_dict=True, db_type="mssql"):
         if db_type == "mssql":
             create_connection = mssql_connection_factory.create()
         elif db_type == "mysql":
             create_connection = mysql_connection_factory.create()
         elif db_type == "postgresql":
             create_connection = pg_connection_factory.create()
+
+        if return_dict:
+            result_data = {"id": create_connection.id,
+                           "domain": create_connection.domain,
+                           "db_type": create_connection.db_type,
+                           "host": create_connection.host,
+                           "port": create_connection.port,
+                           "account": create_connection.account,
+                           "default_db": create_connection.default_db}
+        else:
+            result_data = create_connection
+        return result_data
+
+    def create_table_info(self, increment_table=False, db_type="mssql"):
+        create_connection = self.create_db_connect(db_type=db_type,
+                                                   return_dict=False)
 
         if increment_table is True:
             table_info_data = db_table_info_increment_factory
@@ -250,16 +252,13 @@ class Factory:
         )
         return insert_data_df.columns, len(insert_data_df.index)
 
-    def insert_mock_data_to_source_db(self, table_info):
-        from l_search.models.extract_table_models import DBSession
+    def insert_mock_data_to_source_db(self, engine, table_info):
 
         insert_data_df = pd.read_pickle(PICKLE_PATH)
         insert_data_df = insert_data_df.drop(columns=["geometry"])
 
-        connection = DBSession(connection_info=table_info.connection)
-
         insert_data_df.to_sql(
-            con=connection.engine,
+            con=engine,
             name=str(table_info.table_name).lower(),
             if_exists="replace",
             index=False

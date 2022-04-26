@@ -4,7 +4,6 @@
 @author:simonzhang
 @file:operation_data
 """
-from tests.handle.test_source_meta_detector import TestMetaDetector
 from l_search.models.extract_table_models import DBSession
 from l_search.utils.logger import Logger
 from l_search import models

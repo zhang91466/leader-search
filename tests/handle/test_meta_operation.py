@@ -4,12 +4,12 @@
 @author:simonzhang
 @file:test_meta_operation
 """
-from tests.handle.test_source_meta_detector import TestMetaDetector
+from tests import BaseTestCase
 from l_search import models
 from l_search.handlers.meta_operation import Meta
 
 
-class TestMetaData(TestMetaDetector):
+class TestMetaData(BaseTestCase):
 
     def test_get_table_by_crontab(self):
         table_detail = self.factory.create_table_detail()
